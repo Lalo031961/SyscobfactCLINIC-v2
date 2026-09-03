@@ -21,12 +21,14 @@
     .btn-p:disabled { opacity:.7; cursor:not-allowed; transform:none; }
     .link-t { color:#1A56A0; font-weight:700; text-decoration:none; }
 
-    /* Pantallas Login / Crear Cuenta — mismo patrón de clases (variables,
-       .field, .card, .btn-submit) que Login/index.html del proyecto v2,
-       con los valores puntuales pedidos para este portal (fondo #F5F6FA,
-       card max-width 380px, radius 12px). El resto del portal (dashboard,
-       agendar, notificaciones) sigue con su estilo inline propio — no se
-       tocó, esto es solo para auth. */
+    /* Pantalla de Login — mismo patrón de clases (variables, .field,
+       .card, .btn-submit) que Login/index.html del proyecto v2, con los
+       valores puntuales pedidos para este portal (fondo #F5F6FA, card
+       max-width 380px, radius 12px). No hay auto-registro: las
+       credenciales las emite el administrador desde Dashboard/index.html
+       (ver TAREA 1/3). El resto del portal (dashboard, agendar,
+       notificaciones) sigue con su estilo inline propio — no se tocó,
+       esto es solo para auth. */
     :root{
       --blue:#1A56A0;--blue-dark:#123D74;--blue-light:#EAF1FB;--blue-mid:#5B85C2;
       --auth-bg:#F5F6FA;--text:#152238;--text2:#4A5A72;--border:#DCE6F5;
@@ -67,21 +69,13 @@
 <script>
 const SURL = 'https://jhprliiconsmqqvtkvpo.supabase.co';
 const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHJsaWljb25zbXFxdnRrdnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTYzOTYsImV4cCI6MjA4NTc5MjM5Nn0.bTF1uIgUnWXD_-J5JAhCdTJ6nTA7lkLtLMgFoG50NEI';
-// Sin CLINICA_ID hardcodeado — cada clínica le entrega a sus pacientes un
-// link propio con su clinica_id en la URL (?clinica_id=...), así el
-// paciente nunca elige ni escribe nada: el link ya sabe a qué clínica
-// pertenece. Ese parámetro manda sobre cualquier sesión vieja en
-// localStorage al momento de LOGUEARSE/ACTIVARSE (evita, ej., que una
-// cédula de prueba repetida en dos clínicas distintas matchee la
-// incorrecta) — una vez logueado, la sesión ya guardada en localStorage es
-// la que manda en visitas posteriores sin el parámetro en la URL.
-const CLINICA_ID_URL = new URLSearchParams(window.location.search).get('clinica_id');
-let CLINICA_ID = CLINICA_ID_URL || localStorage.getItem('paciente_clinica_id');
-console.log('[PortalPacientes] window.location.href =', window.location.href);
-console.log('[PortalPacientes] window.location.search =', window.location.search);
-console.log('[PortalPacientes] clinica_id en la URL =', CLINICA_ID_URL);
-console.log('[PortalPacientes] paciente_clinica_id en localStorage =', localStorage.getItem('paciente_clinica_id'));
-console.log('[PortalPacientes] CLINICA_ID final =', CLINICA_ID);
+// Sin ?clinica_id= en la URL: una sola URL sirve para pacientes de
+// CUALQUIER clínica. CLINICA_ID no se conoce hasta después del login (se
+// resuelve leyendo pacientes.clinica_id de la fila que matchea cédula +
+// contraseña) — antes de eso queda null, que es un estado normal (no un
+// error), a diferencia del diseño anterior donde faltar el parámetro
+// bloqueaba el portal entero.
+let CLINICA_ID = localStorage.getItem('paciente_clinica_id');
 const { createClient } = supabase;
 const db = createClient(SURL, SKEY, {
   db: { schema: 'sistema_clinica_v2' },
@@ -97,9 +91,10 @@ const T = {
 };
 
 let view='login', pac=null, citas=[], notifs=[], medicos=[], historial=[], recetas=[], examenes=[];
-// Nombre/teléfono reales de la clínica para el header de Login/Crear Cuenta
-// — se cargan en init() antes del primer render (fallback mientras carga o
-// si falla la consulta).
+// Nombre/teléfono reales de la clínica — antes del login no hay forma de
+// saberlos (no hay CLINICA_ID todavía), así que el login siempre muestra
+// esta marca genérica; recién se resuelve al nombre real de la clínica
+// después de autenticar (ver login()), para el header del dashboard.
 let clinicaInfo = { nombre:'SyscobfactCLINIC', telefono:'' };
 
 async function cargarClinicaInfo(){
@@ -146,7 +141,7 @@ function logout(){
   localStorage.removeItem('paciente_cedula');
   localStorage.removeItem('paciente_email');
   localStorage.removeItem('paciente_tipo');
-  CLINICA_ID=CLINICA_ID_URL;view='login';pac=null;citas=[];notifs=[];render();
+  CLINICA_ID=null;clinicaInfo={nombre:'SyscobfactCLINIC',telefono:''};view='login';pac=null;citas=[];notifs=[];render();
 }
 
 async function cargar(){
@@ -176,25 +171,6 @@ function nombreMedico(medicoId, nombreManual){
   return m?m.nombre_completo:(nombreManual||'---');
 }
 
-// Formato de cédula panameña — mismo regex que V.cedula en Dashboard/
-// index.html (natural, extranjero PE-/E-, naturalizado N-, jurídico), para
-// que la validación sea consistente en todo v2.
-const RE_CEDULA = /^((PE|E|N)-)?\d{1,2}-\d{1,4}-\d{1,6}$|^\d{6,10}-\d{1,2}-\d{4}$/i;
-
-function calcularEdad(fechaNac){
-  if(!fechaNac) return null;
-  const hoy=new Date(); const nac=new Date(fechaNac);
-  let edad=hoy.getFullYear()-nac.getFullYear();
-  const m=hoy.getMonth()-nac.getMonth();
-  if(m<0||(m===0&&hoy.getDate()<nac.getDate()))edad--;
-  return edad;
-}
-function actualizarEdadRegistro(){
-  const campo=document.getElementById('redad');
-  if(!campo)return;
-  const edad=calcularEdad(document.getElementById('rfna')?.value);
-  campo.value=(edad!==null&&edad>=0)?edad+' años':'';
-}
 
 // Guarda la sesión con prefijo paciente_ — exactamente las 6 claves
 // pedidas, sin paciente_rol (a diferencia de Login/index.html, este portal
@@ -209,10 +185,16 @@ function guardarSesion(p){
   CLINICA_ID=p.clinica_id;
 }
 
-// Login con cédula + contraseña contra la tabla pacientes directamente.
-// Acotado a CLINICA_ID (viene del link que le dio la clínica al paciente,
-// nunca de una selección manual) — así una cédula de prueba repetida en
-// dos clínicas distintas nunca matchea la incorrecta.
+// Login con cédula + contraseña — busca en TODAS las clínicas (ya no hay
+// ?clinica_id= en la URL que acote la búsqueda a una sola). clinica_id se
+// resuelve DESPUÉS de autenticar, leyéndolo de la fila que matchea; recién
+// ahí se sabe a qué clínica pertenece este paciente (ver guardarSesion()).
+// Caso de colisión real (poco común, pero pasa en Panamá: el mismo
+// paciente atendido en más de una clínica que usa este sistema, con la
+// MISMA contraseña en ambas) — se detecta explícitamente contando filas
+// en vez de usar .maybeSingle() (que fallaría con el error crudo de
+// Postgres) y se le pide que contacte a su clínica en vez de mostrarle
+// un error genérico.
 async function login(e){
   e.preventDefault();
   const ced=document.getElementById('lced').value.trim();
@@ -223,69 +205,19 @@ async function login(e){
   btn.disabled=true;btn.innerHTML='<div class="spinner" style="border-top-color:#fff"></div> Verificando...';err.style.display='none';
   try{
     const passwordHash=await sha256Hex(pw2);
-    const {data:p,error}=await db.from('pacientes').select('*')
-      .eq('clinica_id',CLINICA_ID).eq('cedula',ced).eq('password',passwordHash).eq('estado','activo').maybeSingle();
+    const {data:coincidencias,error}=await db.from('pacientes').select('*')
+      .eq('cedula',ced).eq('password',passwordHash).eq('estado','activo');
     if(error){err.textContent=error.message;err.style.display='block';return;}
-    if(!p){err.textContent='Cédula o contraseña incorrectos.';err.style.display='block';return;}
+    if(!coincidencias||coincidencias.length===0){err.textContent='Cédula o contraseña incorrectos.';err.style.display='block';return;}
+    if(coincidencias.length>1){err.textContent='Su cédula está registrada en más de una clínica con la misma contraseña. Por favor contacte a su clínica para resolver esta situación.';err.style.display='block';return;}
+    const p=coincidencias[0];
     guardarSesion(p);
+    await cargarClinicaInfo();
     await cargar();
     toast('Bienvenido/a '+p.nombre_completo);
     go('dash');
   }catch(er){err.textContent='Error al iniciar sesion';err.style.display='block';}
   finally{btn.disabled=false;btn.innerHTML='🔐 Iniciar Sesión';}
-}
-
-// Crear cuenta — auto-registro: crea la fila del paciente directamente
-// desde el portal (a diferencia del intento anterior, que solo activaba un
-// paciente ya dado de alta por la clínica). Bloquea cédulas duplicadas
-// dentro de la misma clínica y loguea automático al terminar.
-async function crearCuenta(e){
-  e.preventDefault();
-  const err=document.getElementById('rerr');
-  const btn=document.getElementById('rbtn');
-  const nom=document.getElementById('rnom').value.trim();
-  const ced=document.getElementById('rced').value.trim();
-  const fna=document.getElementById('rfna').value;
-  const tel=document.getElementById('rtel').value.trim();
-  const eml=document.getElementById('reml').value.trim().toLowerCase();
-  const pw1=document.getElementById('rpw1').value;
-  const pw2=document.getElementById('rpw2').value;
-
-  if(!nom||!ced||!fna||!pw1||!pw2){err.textContent='Complete los campos obligatorios';err.style.display='block';return;}
-  if(!RE_CEDULA.test(ced)){err.textContent='Formato de cédula inválido. Ej: 8-294-126, PE-8-294-126, N-8-294-126';err.style.display='block';return;}
-  if(pw1!==pw2){err.textContent='Las contraseñas no coinciden';err.style.display='block';return;}
-  if(pw1.length<6){err.textContent='Mínimo 6 caracteres';err.style.display='block';return;}
-
-  btn.disabled=true;btn.innerHTML='<div class="spinner" style="border-top-color:#fff"></div> Registrando...';err.style.display='none';
-  try{
-    const {data:existente,error:errBusq}=await db.from('pacientes').select('id')
-      .eq('clinica_id',CLINICA_ID).eq('cedula',ced).maybeSingle();
-    if(errBusq){err.textContent=errBusq.message;err.style.display='block';return;}
-    if(existente){err.textContent='Esta cédula ya tiene una cuenta registrada.';err.style.display='block';return;}
-
-    const edad=calcularEdad(fna);
-    const passwordHash=await sha256Hex(pw1);
-    const {data:nuevo,error:errIns}=await db.from('pacientes').insert([{
-      clinica_id:CLINICA_ID,
-      nombre_completo:nom,
-      cedula:ced,
-      fecha_nacimiento:fna,
-      edad,
-      telefono:tel||null,
-      email:eml||null,
-      password:passwordHash,
-      estado:'activo',
-      genero:null,
-      tipo_sangre:null,
-    }]).select().single();
-    if(errIns){err.textContent=errIns.message;err.style.display='block';return;}
-
-    guardarSesion(nuevo);
-    await cargar();
-    toast('Cuenta creada. Bienvenido/a '+nuevo.nombre_completo);
-    go('dash');
-  }catch(er){err.textContent='Error: '+er.message;err.style.display='block';}
-  finally{btn.disabled=false;btn.innerHTML='Crear Cuenta';}
 }
 
 async function marcarLeida(id){
@@ -318,58 +250,7 @@ function rLogin(){
       </div>
       <button type="submit" id="lbtn" class="auth-btn">🔐 Iniciar Sesión</button>
     </form>
-    <p class="auth-foot">¿Primera vez? <a href="#" onclick="go('registro');return false;">Regístrate aquí</a></p>
-  </div>
-  </div></div>`;
-}
-
-function rRegistro(){
-  return `<div class="auth-wrap"><div class="auth-inner">
-  <div class="auth-card">
-    <div class="auth-brand">
-      <div class="auth-brand-icon">🏥</div>
-      <h1>${clinicaInfo.nombre}</h1>
-      <p>Portal del Paciente</p>
-    </div>
-    <h2>Crear Cuenta</h2>
-    <p class="sub">Completa tus datos para registrarte</p>
-    <div id="rerr" class="auth-alert" style="display:none"></div>
-    <form onsubmit="crearCuenta(event)">
-      <div class="auth-field">
-        <label for="rnom">Nombre Completo *</label>
-        <input type="text" id="rnom" placeholder="Ej: Juan Pérez" required>
-      </div>
-      <div class="auth-field">
-        <label for="rced">Cédula *</label>
-        <input type="text" id="rced" placeholder="Ej: 8-294-126" required>
-      </div>
-      <div class="auth-field">
-        <label for="rfna">Fecha de Nacimiento *</label>
-        <input type="date" id="rfna" required oninput="actualizarEdadRegistro()" onchange="actualizarEdadRegistro()">
-      </div>
-      <div class="auth-field">
-        <label for="redad">Edad</label>
-        <input type="text" id="redad" readonly placeholder="Se calcula automático">
-      </div>
-      <div class="auth-field">
-        <label for="rtel">Teléfono (opcional)</label>
-        <input type="tel" id="rtel" placeholder="Ej: 6942-5102">
-      </div>
-      <div class="auth-field">
-        <label for="reml">Email (opcional)</label>
-        <input type="email" id="reml" placeholder="Ej: juan@email.com">
-      </div>
-      <div class="auth-field">
-        <label for="rpw1">Contraseña * <span style="font-weight:400;color:var(--text2)">(mín. 6 caracteres)</span></label>
-        <div class="pw-wrap"><input type="password" id="rpw1" placeholder="••••••••" required minlength="6" style="padding-right:48px"><button type="button" class="pw-btn" id="tglr1" onclick="pw('rpw1','tglr1')">👁️‍🗨️</button></div>
-      </div>
-      <div class="auth-field">
-        <label for="rpw2">Confirmar Contraseña *</label>
-        <div class="pw-wrap"><input type="password" id="rpw2" placeholder="••••••••" required minlength="6" style="padding-right:48px"><button type="button" class="pw-btn" id="tglr2" onclick="pw('rpw2','tglr2')">👁️‍🗨️</button></div>
-      </div>
-      <button type="submit" id="rbtn" class="auth-btn">Crear Cuenta</button>
-    </form>
-    <p class="auth-foot">¿Ya tienes cuenta? <a href="#" onclick="go('login');return false;">Inicia sesión</a></p>
+    <p class="auth-foot">¿No tienes cuenta? Solicita tus credenciales de acceso a tu clínica.</p>
   </div>
   </div></div>`;
 }
@@ -527,26 +408,10 @@ function rNotifs(){
   </div></div>`;
 }
 
-// Sin clinica_id (ni de la URL ni de una sesión ya guardada) no hay forma
-// segura de saber a qué clínica pertenece el paciente — acá no hay
-// selector manual a propósito (el link que da la clínica es la única
-// fuente), así que se bloquea con un mensaje claro en vez de mostrar un
-// login que fallaría igual.
-function rSinClinica(){
-  return `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:${T.hd};text-align:center">
-  <div style="background:#fff;border-radius:24px;box-shadow:0 16px 48px rgba(26,86,160,.15);max-width:400px;padding:36px">
-    <div style="font-size:2.4rem;margin-bottom:14px">🔗</div>
-    <h1 style="font-size:1.15rem;font-weight:700;color:#1e293b;margin-bottom:8px">Enlace incompleto</h1>
-    <p style="color:#64748b;font-size:.85rem;line-height:1.6">Este portal se abre con el enlace que te entrega tu clínica — no es posible ingresar sin él. Si no lo tenés a mano, solicítalo directamente en tu clínica.</p>
-  </div></div>`;
-}
-
 function render(){
   const app=document.getElementById('app');
-  if(!CLINICA_ID){app.innerHTML=rSinClinica();return;}
   switch(view){
     case 'login':     app.innerHTML=rLogin();      break;
-    case 'registro':  app.innerHTML=rRegistro();   break;
     case 'dash':      app.innerHTML=rDash();       break;
     case 'citas':     app.innerHTML=rMisCitas();   break;
     case 'historial': app.innerHTML=rMiHistorial();break;
@@ -557,11 +422,19 @@ function render(){
   }
 }
 
+// Sesión guardada de una visita anterior (paciente_id + paciente_clinica_id
+// en localStorage) restaura el dashboard directo; si no hay sesión, se
+// muestra el login con la marca genérica (clinicaInfo aún no se resuelve
+// sin CLINICA_ID — ver login()).
 async function init(){
-  await cargarClinicaInfo();
   const id=localStorage.getItem('paciente_id');
-  if(id && CLINICA_ID){await cargar();go('dash');}
-  else go('login');
+  if(id && CLINICA_ID){
+    await cargarClinicaInfo();
+    await cargar();
+    go('dash');
+  } else {
+    go('login');
+  }
 }
 init();
 </script>

@@ -255,6 +255,9 @@ tr:hover td{background:#F6F9FD}
 .pac-modal-body{padding:20px 22px}
 .pac-modal-footer{padding:16px 22px;border-top:1px solid #DCE6F5;display:flex;justify-content:flex-end;gap:10px}
 .pac-nombre-link{background:none;border:none;padding:0;font:inherit;font-weight:600;color:var(--teal);cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s}
+.pw-wrap{position:relative;display:flex;align-items:center}
+.pw-wrap input{padding-right:40px !important}
+.pw-btn{position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1}
 .pac-nombre-link:hover{text-decoration-color:var(--teal)}
 
 /* RESPONSIVE */
@@ -407,6 +410,12 @@ tr:hover td{background:#F6F9FD}
         <div class="form-group"><label>Email</label><input id="pmEm" type="email" placeholder="correo@mail.com"></div>
         <div class="form-group"><label>Género</label><select id="pmGen"><option value="masculino">Masculino</option><option value="femenino">Femenino</option></select></div>
         <div class="form-group"><label>Tipo de sangre</label><select id="pmSang"><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select></div>
+        <div class="form-group"><label>Nueva contraseña</label>
+          <div class="pw-wrap"><input id="pmPass" type="password" placeholder="Dejar en blanco para no cambiar"><button type="button" class="pw-btn" onclick="pw('pmPass',this)">👁️‍🗨️</button></div>
+        </div>
+        <div class="form-group"><label>Confirmar nueva contraseña</label>
+          <div class="pw-wrap"><input id="pmPass2" type="password" placeholder="Repita la contraseña nueva"><button type="button" class="pw-btn" onclick="pw('pmPass2',this)">👁️‍🗨️</button></div>
+        </div>
       </div>
     </div>
     <div class="pac-modal-footer">
@@ -509,6 +518,15 @@ const dbStorage = createClient(SUPABASE_URL, SUPABASE_KEY)
 async function sha256Hex(texto) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Toggle ver/ocultar contraseña — recibe el botón directamente (this) en
+// vez de un id, así un mismo formulario puede tener varios campos de
+// contraseña sin coordinar ids de botón por separado.
+function pw(inputId, btn) {
+  const i = document.getElementById(inputId);
+  if (i.type === 'password') { i.type = 'text'; btn.textContent = '👁️'; }
+  else { i.type = 'password'; btn.textContent = '👁️‍🗨️'; }
 }
 
 // ← AGREGAR AQUÍ — antes de todo lo demás
@@ -2193,6 +2211,12 @@ function _renderPacientes(){
         <div class="form-group"><label>Alergias</label><input id="pAl" placeholder="Ninguna"></div>
         <div class="form-group"><label>Contacto emergencia</label><input id="pCe" placeholder="Nombre"></div>
         <div class="form-group"><label>Teléfono emergencia</label><input id="pTe" placeholder="6000-0000"></div>
+        <div class="form-group"><label>Contraseña *</label>
+          <div class="pw-wrap"><input id="pPass" type="password" placeholder="Mínimo 6 caracteres"><button type="button" class="pw-btn" onclick="pw('pPass',this)">👁️‍🗨️</button></div>
+        </div>
+        <div class="form-group"><label>Confirmar Contraseña *</label>
+          <div class="pw-wrap"><input id="pPass2" type="password" placeholder="Repita la contraseña"><button type="button" class="pw-btn" onclick="pw('pPass2',this)">👁️‍🗨️</button></div>
+        </div>
       </div>
       <button class="btn btn-teal" onclick="crearPaciente()"><i class="fas fa-user-plus"></i> Registrar paciente</button>
       </div>
@@ -2240,16 +2264,29 @@ async function crearPaciente() {
     { id: 'pEm',  rules: [V.email] },
     { id: 'pTel', rules: [V.phone] },
     { id: 'pCed', rules: [V.cedula] },
+    { id: 'pPass',  rules: [V.req, V.minLen(6)] },
+    { id: 'pPass2', rules: [V.req] },
   ])) return;
-  const n = document.getElementById('pNom').value.trim();
+  const n     = document.getElementById('pNom').value.trim();
+  const pass  = document.getElementById('pPass').value;
+  const pass2 = document.getElementById('pPass2').value;
+
+  if (pass !== pass2) {
+    showFieldError('pPass2', 'Las contraseñas no coinciden');
+    document.getElementById('pPass2').focus();
+    return;
+  }
 
   const btn = document.querySelector('[onclick="crearPaciente()"]');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; }
 
+  const passwordHash = await sha256Hex(pass);
+  const cedula = document.getElementById('pCed').value.trim();
+
   const { data, error } = await db.from('pacientes').insert([{
     clinica_id:          CLINICA_ID,
     nombre_completo:     n,
-    cedula:              document.getElementById('pCed').value.trim(),
+    cedula,
     email:               document.getElementById('pEm').value.trim(),
     telefono:            document.getElementById('pTel').value.trim(),
     fecha_nacimiento:    document.getElementById('pFechaNac').value || null,
@@ -2259,6 +2296,7 @@ async function crearPaciente() {
     alergias:            document.getElementById('pAl').value || 'Ninguna',
     contacto_emergencia: document.getElementById('pCe').value.trim(),
     tel_emergencia:      document.getElementById('pTe').value.trim(),
+    password:            passwordHash,
     estado:              'activo'
   }]).select().single();
 
@@ -2273,6 +2311,77 @@ async function crearPaciente() {
   showToast(`✅ ${n} registrado correctamente`);
   renderPacientes();
   cargarKPIs();
+  imprimirCredencialesPaciente(data, pass);
+}
+
+// ── HOJA DE CREDENCIALES DEL PACIENTE (imprimible) ────────
+// Se abre automáticamente al registrar un paciente con contraseña — es la
+// ÚNICA vez que la contraseña en texto plano queda visible en algún lado
+// (en Supabase solo se guarda su hash SHA-256); por eso se genera al
+// vuelo a partir del valor que el admin acaba de escribir, nunca se lee
+// de vuelta desde la base de datos.
+async function imprimirCredencialesPaciente(paciente, passwordPlano) {
+  const { data: clinica } = await db.from('clinicas').select('nombre').eq('id', CLINICA_ID).single();
+  const nombreClinica = clinica?.nombre || 'SyscobfactCLINIC';
+  const urlPortal = 'https://flourishing-nougat-176271.netlify.app/PortalPacientes/';
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(urlPortal)}`;
+
+  const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>Credenciales — ${paciente.nombre_completo}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  body{font-family:'DM Sans',sans-serif;padding:40px;max-width:480px;margin:0 auto;color:#152238}
+  .encabezado{text-align:center;margin-bottom:22px}
+  .logo{font-size:2rem;margin-bottom:6px}
+  .clinica-nombre{font-size:1.15rem;font-weight:700;color:#1A56A0;margin-bottom:2px}
+  .clinica-sub{font-size:.8rem;color:#64748b}
+  hr{border:none;border-top:2px solid #DCE6F5;margin:18px 0}
+  .saludo{font-size:.92rem;margin-bottom:14px}
+  .box{background:#F6F9FD;border:1.5px solid #DCE6F5;border-radius:12px;padding:18px 20px;margin-bottom:20px}
+  .box-title{font-size:.78rem;font-weight:700;color:#1A56A0;text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
+  .cred-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:.9rem}
+  .cred-label{color:#64748b}
+  .cred-val{font-weight:700;color:#152238;font-family:monospace;font-size:1rem}
+  .qr-wrap{text-align:center;margin:22px 0}
+  .qr-wrap img{border:1px solid #DCE6F5;border-radius:10px;padding:8px}
+  .qr-url{font-size:.7rem;color:#64748b;word-break:break-all;text-align:center;margin-top:8px}
+  .footer{text-align:center;font-size:.72rem;color:#94a3b8;margin-top:28px}
+</style>
+</head><body>
+
+  <div class="encabezado">
+    <div class="logo">🏥</div>
+    <div class="clinica-nombre">${nombreClinica}</div>
+    <div class="clinica-sub">Portal del Paciente</div>
+  </div>
+  <hr>
+
+  <p class="saludo">Estimado/a <strong>${paciente.nombre_completo}</strong>:</p>
+  <p style="font-size:.85rem;color:#475569;margin-bottom:18px">A continuación sus credenciales de acceso al Portal del Paciente:</p>
+
+  <div class="box">
+    <div class="box-title">🔐 Credenciales de acceso</div>
+    <div class="cred-row"><span class="cred-label">👤 Usuario</span><span class="cred-val">${paciente.cedula}</span></div>
+    <div class="cred-row"><span class="cred-label">🔑 Contraseña</span><span class="cred-val">${passwordPlano}</span></div>
+  </div>
+
+  <div class="qr-wrap">
+    <img src="${qrSrc}" alt="Código QR de acceso" width="220" height="220">
+    <div class="qr-url">Escanee el código QR o visite:<br>${urlPortal}</div>
+  </div>
+
+  <div class="footer">
+    ${nombreClinica} — Tecnología al servicio de la salud
+  </div>
+
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 800);
 }
 
 async function delPac(id) {
@@ -5168,6 +5277,8 @@ function abrirEditarPaciente(id) {
   document.getElementById('pmEm').value       = p.email || '';
   document.getElementById('pmGen').value      = p.genero || 'masculino';
   document.getElementById('pmSang').value     = p.tipo_sangre || 'O+';
+  document.getElementById('pmPass').value     = '';
+  document.getElementById('pmPass2').value    = '';
   actualizarEdadPacienteModal();
   document.getElementById('pacModalOverlay').classList.add('show');
 }
@@ -5185,6 +5296,16 @@ async function guardarEdicionPaciente() {
     { id: 'pmCed', rules: [V.cedula] },
   ])) return;
 
+  // La contraseña es opcional acá: en blanco = no se toca la que ya tiene
+  // el paciente. Si se llena, debe coincidir con la confirmación (mismas
+  // reglas que al crear).
+  const passNueva  = document.getElementById('pmPass').value;
+  const passNueva2 = document.getElementById('pmPass2').value;
+  if (passNueva || passNueva2) {
+    if (passNueva.length < 6) { showFieldError('pmPass', 'Mínimo 6 caracteres'); return; }
+    if (passNueva !== passNueva2) { showFieldError('pmPass2', 'Las contraseñas no coinciden'); return; }
+  }
+
   const btn = document.getElementById('btnGuardarPacienteModal');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
@@ -5198,6 +5319,7 @@ async function guardarEdicionPaciente() {
     genero:            document.getElementById('pmGen').value,
     tipo_sangre:       document.getElementById('pmSang').value,
   };
+  if (passNueva) cambios.password = await sha256Hex(passNueva);
 
   const { data, error } = await db.from('pacientes').update(cambios).eq('id', id).select().single();
 

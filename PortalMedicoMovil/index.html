@@ -23,7 +23,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
    index.html, para que ambos portales luzcan idénticos en autenticación
    (fondo claro #F5F6FA, sin el degradado azul de pantalla completa que
    tenía esta versión antes). */
-#loginScreen,.sinclinica-wrap{position:fixed;inset:0;z-index:999;background:#F5F6FA;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+#loginScreen{position:fixed;inset:0;z-index:999;background:#F5F6FA;display:flex;align-items:center;justify-content:center;padding:24px 16px}
 .auth-inner{width:100%;max-width:380px}
 .auth-brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:22px;text-align:center}
 .auth-brand-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--blue),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 20px rgba(26,86,160,0.08)}
@@ -46,8 +46,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .login-forgot{margin-top:18px;background:transparent;border:none;color:var(--blue);font-size:.8rem;font-weight:700;cursor:pointer;text-decoration:underline;width:100%;text-align:center}
 .spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-.sinclinica-card{background:#fff;border:1px solid #DCE6F5;border-radius:12px;padding:32px 26px;max-width:360px;text-align:center;box-shadow:0 16px 48px rgba(26,86,160,0.16)}
 
 /* ══ MAIN APP ══ */
 #mainApp{display:none;padding-bottom:40px}
@@ -157,15 +155,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 </style>
 </head>
 <body>
-
-<!-- ══ SIN CLINICA_ID EN LA URL ══ -->
-<div class="sinclinica-wrap" id="sinClinicaScreen" style="display:none">
-  <div class="sinclinica-card">
-    <div style="font-size:2.4rem;margin-bottom:14px">🔗</div>
-    <h1 style="font-size:1.1rem;font-weight:700;color:#1a1a1a;margin-bottom:8px">Enlace incompleto</h1>
-    <p style="color:#64748b;font-size:.85rem;line-height:1.6">Este portal se abre con el enlace que te entrega tu clínica — no es posible ingresar sin él.</p>
-  </div>
-</div>
 
 <!-- ══ PANTALLA DE LOGIN — mismo patrón visual que PortalPacientes/
      index.html: logo/nombre real de la clínica/"Portal del Médico" DENTRO
@@ -301,15 +290,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 const SURL = 'https://jhprliiconsmqqvtkvpo.supabase.co';
 const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHJsaWljb25zbXFxdnRrdnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTYzOTYsImV4cCI6MjA4NTc5MjM5Nn0.bTF1uIgUnWXD_-J5JAhCdTJ6nTA7lkLtLMgFoG50NEI';
 
-// Sin CLINICA_ID hardcodeado — igual que PortalPacientes/index.html: viene
-// del link que le da la clínica al médico (?clinica_id=...), nunca de una
-// selección manual. Se guarda en sessionStorage (no localStorage) junto con
-// el resto de la sesión — así, aunque este portal y DashboardMedico/
+// Sin ?clinica_id= en la URL: una sola URL sirve para médicos de
+// CUALQUIER clínica. CLINICA_ID no se conoce hasta después del login (se
+// resuelve leyendo usuarios_clinica.clinica_id de la fila que matchea
+// email + contraseña) — antes de eso queda null, estado normal (no un
+// error). Se guarda en sessionStorage (no localStorage) junto con el
+// resto de la sesión — así, aunque este portal y DashboardMedico/
 // index.html (que sí usa localStorage con prefijo medico_*) estén abiertos
 // al mismo tiempo en el mismo navegador, nunca comparten ni se pisan la
 // sesión: sessionStorage es exclusivo de cada pestaña.
-const CLINICA_ID_URL = new URLSearchParams(window.location.search).get('clinica_id');
-let CLINICA_ID = CLINICA_ID_URL || sessionStorage.getItem('medicomovil_clinica_id');
+let CLINICA_ID = sessionStorage.getItem('medicomovil_clinica_id');
 
 const { createClient } = supabase;
 const db = createClient(SURL, SKEY, {
@@ -321,10 +311,12 @@ let medicoActual = null;
 let confirmadas  = [];
 let pendientes   = [];
 let pacientesCache = {}; // id -> {nombre_completo, email}
-let clinicaInfo = { nombre: 'SyscobfactCLINIC' }; // fallback mientras carga
+let clinicaInfo = { nombre: 'SyscobfactCLINIC' }; // marca genérica del login hasta autenticar
 
-// Nombre real de la clínica para el header del login — mismo patrón que
-// cargarClinicaInfo() en PortalPacientes/index.html.
+// Nombre real de la clínica — solo tiene sentido llamarlo después del
+// login (recién ahí se conoce CLINICA_ID); antes de eso no hace nada
+// (ver guardia `if (!CLINICA_ID) return`), así que el login siempre
+// muestra la marca genérica.
 async function cargarClinicaInfo() {
   if (!CLINICA_ID) return;
   try {
@@ -363,15 +355,11 @@ function fechaLocalHoy() {
 
 // ══ INIT ══════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
-  if (!CLINICA_ID) {
-    document.getElementById('sinClinicaScreen').style.display = 'flex';
-    return;
-  }
   setFechaHeader();
-  await cargarClinicaInfo();
   const savedId = sessionStorage.getItem('medicomovil_id');
-  if (savedId) {
+  if (savedId && CLINICA_ID) {
     try {
+      await cargarClinicaInfo();
       const { data } = await db.from('medicos').select('*').eq('id', savedId).eq('clinica_id', CLINICA_ID).single();
       if (data) { medicoActual = data; mostrarPortal(); return; }
     } catch(e) {}
@@ -389,12 +377,13 @@ function togglePw() {
 // El médico NO se registra desde este portal — lo da de alta el admin desde
 // Dashboard/index.html (crearMedico()), que ya crea AMBAS filas: la de
 // acceso en usuarios_clinica (email/password/rol='medico') y la ficha
-// clínica en medicos (sin password — nunca fue pensada para login). Por
-// eso el login acá se valida contra usuarios_clinica, exactamente igual
-// que Login/index.html, y luego se resuelve medicoActual (la fila de
-// `medicos`, la que sí tiene el id que usan citas/facturas como medico_id)
-// buscando por email — mismo patrón que bootSesion() en DashboardMedico/
-// index.html.
+// clínica en medicos (sin password — nunca fue pensada para login).
+// Sin ?clinica_id= en la URL, el login busca en usuarios_clinica de TODAS
+// las clínicas (solo por email+password+rol+activo) — clinica_id recién
+// se conoce leyendo usuario.clinica_id de la fila que matcheó, y con ese
+// valor se resuelve medicoActual (la fila de `medicos`, la que sí tiene el
+// id que usan citas/facturas como medico_id) — mismo patrón en dos pasos
+// que bootSesion() en DashboardMedico/index.html.
 async function validarLogin() {
   const email = document.getElementById('lEmail').value.trim().toLowerCase();
   const pass  = document.getElementById('lPass').value;
@@ -406,18 +395,28 @@ async function validarLogin() {
   btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Verificando...';
   try {
     const passwordHash = await sha256Hex(pass);
-    const { data: usuario, error } = await db.from('usuarios_clinica').select('*')
-      .eq('clinica_id', CLINICA_ID).eq('email', email).eq('password', passwordHash)
-      .eq('rol', 'medico').eq('activo', true).maybeSingle();
+    // Colisión real (el mismo médico con cuenta en más de una clínica y la
+    // MISMA contraseña en ambas) — se cuenta en vez de usar .maybeSingle()
+    // para poder avisarle explícitamente en vez de mostrarle el error
+    // crudo de Postgres.
+    const { data: coincidencias, error } = await db.from('usuarios_clinica').select('*')
+      .eq('email', email).eq('password', passwordHash)
+      .eq('rol', 'medico').eq('activo', true);
     if (error) throw error;
-    if (!usuario) {
+    if (!coincidencias || coincidencias.length === 0) {
       err.textContent = 'Contacte al administrador de la clínica para obtener sus credenciales de acceso';
       err.classList.add('show');
       return;
     }
+    if (coincidencias.length > 1) {
+      err.textContent = 'Su email está registrado en más de una clínica con la misma contraseña. Por favor contacte a su administrador para resolver esta situación.';
+      err.classList.add('show');
+      return;
+    }
+    const usuario = coincidencias[0];
 
     const { data: med, error: errMed } = await db.from('medicos').select('*')
-      .eq('clinica_id', CLINICA_ID).eq('email', usuario.email).eq('estado', 'activo').maybeSingle();
+      .eq('clinica_id', usuario.clinica_id).eq('email', usuario.email).eq('estado', 'activo').maybeSingle();
     if (errMed) console.error(errMed);
     if (!med) {
       err.textContent = 'Contacte al administrador de la clínica para obtener sus credenciales de acceso';
@@ -429,6 +428,7 @@ async function validarLogin() {
     sessionStorage.setItem('medicomovil_id', med.id);
     sessionStorage.setItem('medicomovil_clinica_id', med.clinica_id);
     CLINICA_ID = med.clinica_id;
+    await cargarClinicaInfo();
     document.getElementById('loginScreen').style.display = 'none';
     mostrarPortal();
   } catch(e) {
@@ -600,10 +600,13 @@ async function olvideContrasena() {
 
   try {
     const emailNorm = email.trim().toLowerCase();
+    // Sin ?clinica_id= en la URL: se busca por email en TODAS las clínicas.
+    // Si el mismo email quedó registrado como médico en más de una clínica,
+    // .single() falla (ambigüedad real) y cae al mensaje de "no encontrado"
+    // de abajo — más seguro que adivinar cuál de las dos cuentas resetear.
     const { data: usuario, error } = await db
       .from('usuarios_clinica')
-      .select('id, nombre, email')
-      .eq('clinica_id', CLINICA_ID)
+      .select('id, nombre, email, clinica_id')
       .eq('email', emailNorm)
       .eq('rol', 'medico')
       .eq('activo', true)
@@ -617,7 +620,7 @@ async function olvideContrasena() {
     const { data: med } = await db
       .from('medicos')
       .select('nombre_completo')
-      .eq('clinica_id', CLINICA_ID)
+      .eq('clinica_id', usuario.clinica_id)
       .eq('email', emailNorm)
       .eq('estado', 'activo')
       .maybeSingle();
