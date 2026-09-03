@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iniciar Sesión — SyscobfactCLINIC</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏥</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --blue:#1A56A0;--blue-dark:#123D74;--blue-light:#EAF1FB;--blue-mid:#5B85C2;
+  --bg:#F6F9FD;--surface:#FFFFFF;--text:#152238;--text2:#4A5A72;--border:#DCE6F5;
+  --error:#DC2626;--error-bg:#FEF2F2;--success:#16A34A;
+  --radius:14px;--radius-lg:22px;
+  --shadow:0 4px 20px rgba(26,86,160,0.08);--shadow-lg:0 16px 48px rgba(26,86,160,0.16);
+  --font-display:'Playfair Display',Georgia,serif;--font-body:'DM Sans',sans-serif;
+}
+html{font-size:16px}
+body{
+  font-family:var(--font-body);background:linear-gradient(180deg,var(--blue-light) 0%,var(--bg) 100%);
+  color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:40px 20px
+}
+a{color:var(--blue)}
+h1,h2{font-family:var(--font-display)}
+
+.wrap{width:100%;max-width:440px}
+.brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:28px;text-align:center}
+.brand-icon{
+  width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--blue),var(--blue-mid));
+  display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:var(--shadow)
+}
+.brand h1{font-size:1.4rem;font-weight:700;color:var(--blue-dark)}
+.brand p{font-size:.8rem;color:var(--text2);font-weight:500;margin-top:2px}
+
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:36px 32px;box-shadow:var(--shadow-lg)
+}
+.card h2{font-size:1.25rem;color:var(--text);margin-bottom:4px}
+.card .sub{font-size:.85rem;color:var(--text2);margin-bottom:26px}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:6px}
+.field input,.field select{
+  width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;
+  font-family:var(--font-body);font-size:.9rem;color:var(--text);background:#fff;transition:border-color .15s,box-shadow .15s
+}
+.field select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%234A5A72' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.field input:focus,.field select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,160,.12)}
+.field input.invalid,.field select.invalid{border-color:var(--error)}
+.field .field-error{font-size:.76rem;color:var(--error);margin-top:5px;display:none}
+
+.btn-submit{
+  width:100%;padding:14px;background:linear-gradient(135deg,var(--blue),var(--blue-mid));color:#fff;
+  font-weight:700;font-size:.95rem;border-radius:100px;box-shadow:0 8px 22px rgba(26,86,160,.32);
+  transition:transform .2s,box-shadow .2s,opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-top:6px
+}
+.btn-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 28px rgba(26,86,160,.42)}
+.btn-submit:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.alert{padding:12px 14px;border-radius:10px;font-size:.82rem;margin-bottom:18px;display:none}
+.alert.error{background:var(--error-bg);color:var(--error);border:1px solid #FECACA;display:block}
+.alert.success{background:#F0FDF4;color:var(--success);border:1px solid #BBF7D0;display:block}
+
+.foot-link{text-align:center;margin-top:20px;font-size:.85rem;color:var(--text2)}
+.foot-link a{font-weight:700;text-decoration:none}
+.foot-link a:hover{text-decoration:underline}
+
+@media (max-width:480px){
+  .card{padding:28px 22px}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-icon">🏥</div>
+    <h1>SyscobfactCLINIC</h1>
+    <p>Sistema de Gestión Clínica para Panamá</p>
+  </div>
+
+  <div class="card">
+    <h2>Iniciar Sesión</h2>
+    <p class="sub">Accede a tu cuenta de SyscobfactCLINIC.</p>
+
+    <div id="alertBox" class="alert"></div>
+
+    <form id="loginForm" novalidate>
+      <div class="field">
+        <label for="fRol">Acceso como</label>
+        <select id="fRol">
+          <option value="admin">⚕️ Administrador de Clínica</option>
+          <option value="medico">👨‍⚕️ Médico</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="fEmail">Email</label>
+        <input type="email" id="fEmail" placeholder="tu@clinica.com">
+        <p class="field-error" id="err_fEmail"></p>
+      </div>
+
+      <div class="field">
+        <label for="fPassword">Contraseña</label>
+        <input type="password" id="fPassword" placeholder="••••••••">
+        <p class="field-error" id="err_fPassword"></p>
+      </div>
+
+      <button type="submit" class="btn-submit" id="btnSubmit">Iniciar Sesión</button>
+    </form>
+
+    <p class="foot-link">¿Primera vez? <a href="../Register/index.html">Regístrese aquí</a></p>
+  </div>
+</div>
+
+<script>
+const SURL = 'https://jhprliiconsmqqvtkvpo.supabase.co'
+const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHJsaWljb25zbXFxdnRrdnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTYzOTYsImV4cCI6MjA4NTc5MjM5Nn0.bTF1uIgUnWXD_-J5JAhCdTJ6nTA7lkLtLMgFoG50NEI'
+const { createClient } = supabase
+const db = createClient(SURL, SKEY, {
+  db: { schema: 'sistema_clinica_v2' },
+  global: { headers: { 'Accept-Profile': 'sistema_clinica_v2', 'Content-Profile': 'sistema_clinica_v2' } }
+})
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// SHA-256 vía Web Crypto (nativo del navegador) — mismo helper que
+// Register/index.html, así el hash siempre se calcula igual en toda la app.
+async function sha256Hex(texto) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto))
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function limpiarErrores() {
+  document.querySelectorAll('.field-error').forEach((el) => { el.style.display = 'none'; el.textContent = '' })
+  document.querySelectorAll('input,select').forEach((el) => el.classList.remove('invalid'))
+  document.getElementById('alertBox').style.display = 'none'
+}
+
+function marcarError(id, mensaje) {
+  const input = document.getElementById(id)
+  const err = document.getElementById('err_' + id)
+  if (input) input.classList.add('invalid')
+  if (err) { err.textContent = mensaje; err.style.display = 'block' }
+}
+
+function mostrarAlerta(mensaje, tipo) {
+  const box = document.getElementById('alertBox')
+  box.className = 'alert ' + tipo
+  box.textContent = mensaje
+  box.style.display = 'block'
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  limpiarErrores()
+
+  const rol = document.getElementById('fRol').value // 'admin' | 'medico'
+  const email = document.getElementById('fEmail').value.trim().toLowerCase()
+  const password = document.getElementById('fPassword').value
+
+  let ok = true
+  if (!email) { marcarError('fEmail', 'Ingresa tu email.'); ok = false }
+  else if (!EMAIL_REGEX.test(email)) { marcarError('fEmail', 'El email no tiene un formato válido.'); ok = false }
+  if (!password) { marcarError('fPassword', 'Ingresa tu contraseña.'); ok = false }
+  if (!ok) return
+
+  const btn = document.getElementById('btnSubmit')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spinner"></span> Verificando...'
+
+  try {
+    const passwordHash = await sha256Hex(password)
+
+    const { data: usuario, error } = await db
+      .from('usuarios_clinica')
+      .select('*')
+      .eq('email', email)
+      .eq('password', passwordHash)
+      .eq('rol', rol)
+      .eq('activo', true)
+      .maybeSingle()
+    if (error) throw error
+
+    if (!usuario) {
+      mostrarAlerta('Email, contraseña o tipo de acceso incorrectos.', 'error')
+      return
+    }
+
+    // Sesión simple en localStorage (este proyecto no tiene backend propio
+    // ni usa Supabase Auth, todo vive en el cliente) — CON PREFIJO según el
+    // rol (admin_* / medico_*), no claves compartidas. Dashboard/index.html
+    // y DashboardMedico/index.html son archivos file:// distintos pero
+    // comparten el mismo bucket de localStorage del navegador (Chrome no
+    // distingue orígenes file:// por carpeta); con claves compartidas,
+    // loguearse como médico en una pestaña pisaba la sesión del admin en
+    // otra pestaña abierta al mismo tiempo, y viceversa. Con prefijos
+    // separados ambas sesiones conviven sin pisarse.
+    const prefijo = usuario.rol === 'medico' ? 'medico_' : 'admin_'
+    localStorage.setItem(prefijo + 'clinica_id', usuario.clinica_id)
+    localStorage.setItem(prefijo + 'nombre', usuario.nombre)
+    localStorage.setItem(prefijo + 'email', usuario.email)
+    localStorage.setItem(prefijo + 'rol', usuario.rol)
+    localStorage.setItem(prefijo + 'tipo', usuario.rol === 'medico' ? 'medico' : 'admin')
+
+    db.from('usuarios_clinica').update({ ultimo_acceso: new Date().toISOString() }).eq('id', usuario.id).then(() => {})
+
+    mostrarAlerta('✅ Bienvenido/a. Redirigiendo...', 'success')
+    setTimeout(() => {
+      window.location.replace(usuario.rol === 'medico' ? '../DashboardMedico/index.html' : '../Dashboard/index.html')
+    }, 600)
+  } catch (err) {
+    console.error(err)
+    mostrarAlerta(err.message || 'No se pudo iniciar sesión. Intenta de nuevo.', 'error')
+  } finally {
+    btn.disabled = false
+    btn.innerHTML = 'Iniciar Sesión'
+  }
+})
+</script>
+
+</body>
+</html>

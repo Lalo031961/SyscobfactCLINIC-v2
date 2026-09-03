@@ -1,0 +1,2635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Médico — SyscobfactCLINIC</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏥</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --teal:#1A56A0;--teal-dark:#123D74;--teal-light:#EAF1FB;--teal-mid:#5B85C2;
+  --emerald:#5B85C2;--amber:#f59e0b;--rose:#f43f5e;--violet:#8b5cf6;
+  --bg:#F6F9FD;--surface:#ffffff;--border:#DCE6F5;--text:#152238;--text2:#123D74;--text-secondary:#64748b;
+  --sidebar-w:260px;--radius:12px;--radius-lg:18px;
+  --shadow:0 4px 20px rgba(26,86,160,0.08);--shadow-lg:0 12px 40px rgba(26,86,160,0.15);
+  --font-display:'Playfair Display',Georgia,serif;--font-body:'DM Sans',sans-serif;
+}
+
+/* SIDEBAR — mismas clases y colores que Dashboard/index.html, para que el
+   médico vea el mismo lenguaje visual que el admin. */
+.sidebar{
+  width:var(--sidebar-w);background:linear-gradient(180deg,#152238 0%,#123D74 100%);
+  height:100vh;position:fixed;left:0;top:0;display:flex;flex-direction:column;
+  z-index:100;box-shadow:4px 0 20px rgba(26,86,160,.2)
+}
+.sb-header{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo{display:flex;align-items:center;gap:11px}
+.sb-logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--teal-light),var(--teal-mid));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.sb-logo-name{font-family:var(--font-display);font-size:.88rem;font-weight:700;color:#fff;line-height:1.2}
+.sb-logo-sub{font-size:.58rem;color:rgba(255,255,255,.5);font-weight:400}
+.sb-nav{flex:1;padding:16px 12px;overflow-y:auto}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  color:rgba(255,255,255,.65);font-size:.78rem;font-weight:500;cursor:pointer;
+  transition:all .15s;margin-bottom:2px;border:none;background:transparent;width:100%;text-align:left
+}
+.nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.15);color:#fff;font-weight:600}
+.nav-item i{width:18px;text-align:center;font-size:.82rem}
+.sb-footer{padding:14px 12px;border-top:1px solid rgba(255,255,255,.1)}
+.sb-user{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.08);border-radius:10px;margin-bottom:10px}
+.sb-user-avatar{width:34px;height:34px;background:linear-gradient(135deg,var(--teal-light),var(--teal-mid));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+.sb-user-name{font-size:.74rem;font-weight:600;color:#fff;line-height:1.2}
+.sb-user-role{font-size:.62rem;color:rgba(255,255,255,.4)}
+.btn-logout{width:100%;padding:9px 12px;background:rgba(244,63,94,.12);color:#fda4af;border:1px solid rgba(244,63,94,.2);border-radius:8px;font-size:.74rem;font-weight:600;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-logout:hover{background:rgba(244,63,94,.22)}
+
+/* MAIN — todo lo que antes colgaba directo de <body> ahora vive acá, */
+/* corrido a la derecha del sidebar. */
+.main{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
+@media (max-width:860px){
+  .sidebar{width:72px}
+  .sb-logo-name,.sb-logo-sub,.nav-item span,.sb-user-name,.sb-user-role{display:none}
+  .main{margin-left:72px}
+}
+html{font-size:15px}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh}
+button{font-family:var(--font-body);cursor:pointer}
+input,select,textarea{font-family:var(--font-body)}
+
+/* TOPBAR MÉDICO */
+.topbar-medico{
+  background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;
+  justify-content:space-between;padding:14px 28px;box-shadow:var(--shadow);position:sticky;top:0;z-index:90
+}
+.topbar-medico-logo{display:flex;align-items:center;gap:12px}
+.topbar-medico-icon{
+  width:42px;height:42px;background:linear-gradient(135deg,var(--teal),var(--teal-mid));
+  border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0
+}
+.topbar-medico-name{font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--teal);line-height:1.2}
+.topbar-medico-sub{font-size:.68rem;color:#64748b}
+.topbar-medico-right{display:flex;align-items:center;gap:16px}
+.topbar-medico-doc{text-align:right}
+.topbar-medico-doc-name{font-size:.82rem;font-weight:700;color:var(--text)}
+.topbar-medico-doc-esp{font-size:.68rem;color:var(--teal);font-weight:600}
+.btn-logout-top{
+  display:inline-flex;align-items:center;gap:7px;background:rgba(244,63,94,.1);color:var(--rose);
+  border:1px solid rgba(244,63,94,.2);border-radius:8px;padding:9px 16px;font-size:.78rem;font-weight:600;
+  transition:background .2s
+}
+.btn-logout-top:hover{background:rgba(244,63,94,.18)}
+
+/* flex:1 (no max-width+margin:auto) — .main es display:flex;flex-direction:
+   column, así que .content necesita ocupar el ancho como flex item, igual
+   que Dashboard/index.html. margin:0 auto ahí se encogía al contenido en
+   vez de estirarse, dejando las tarjetas de KPI angostas. */
+.content{flex:1;padding:28px;overflow-y:auto}
+
+/* VALIDACIÓN */
+.field-error{border-color:var(--rose)!important;box-shadow:0 0 0 3px rgba(244,63,94,.1)!important;background:#fff8f8!important}
+.field-msg{font-size:.68rem;color:var(--rose);margin-top:4px;display:none;line-height:1.4;font-weight:500}
+.field-msg.show{display:block}
+
+/* PAGE TITLE */
+.page-title{font-family:var(--font-display);font-size:1.4rem;font-weight:700;color:var(--text);margin-bottom:4px}
+.page-sub{font-size:.75rem;color:#64748b;margin-bottom:22px}
+
+/* STAT CARDS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--surface);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s}
+.stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+.stat-card.teal::before{background:linear-gradient(90deg,#1A56A0,#5B85C2)}
+.stat-card.emerald::before{background:linear-gradient(90deg,#5B85C2,#1A56A0)}
+.stat-card.amber::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.stat-card.violet::before{background:linear-gradient(90deg,#8b5cf6,#a78bfa)}
+.stat-card.rose::before{background:linear-gradient(90deg,#f43f5e,#fb7185)}
+.stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;margin-bottom:14px}
+.stat-card.teal .stat-icon{background:#EAF1FB;color:#123D74}
+.stat-card.emerald .stat-icon{background:#DCE6F5;color:#123D74}
+.stat-card.amber .stat-icon{background:#fef9c3;color:#d97706}
+.stat-card.violet .stat-icon{background:#ede9fe;color:#7c3aed}
+.stat-card.rose .stat-icon{background:#fee2e2;color:#e11d48}
+.stat-num{font-family:var(--font-display);font-size:2rem;font-weight:700;line-height:1;margin-bottom:4px}
+.stat-card.teal .stat-num{color:#1A56A0}
+.stat-card.emerald .stat-num{color:#5B85C2}
+.stat-card.amber .stat-num{color:#f59e0b}
+.stat-card.violet .stat-num{color:#8b5cf6}
+.stat-card.rose .stat-num{color:#f43f5e}
+.stat-label{font-size:.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+
+/* CARDS */
+.card{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;margin-bottom:20px}
+.card-header{padding:16px 20px 14px;border-bottom:1px solid #F6F9FD;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:.84rem;font-weight:700;color:var(--text)}
+.card-body{padding:18px 20px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;font-size:.74rem;font-weight:600;transition:all .15s;border:none}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-teal:hover{background:var(--teal-dark)}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
+.btn-outline:hover{background:#F6F9FD;border-color:var(--teal)}
+.btn-sm{padding:5px 12px;font-size:.68rem}
+.btn-mic{background:#fef9c3;color:#d97706;padding:6px 10px;border-radius:8px;font-size:.75rem;margin-left:6px;border:none}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.badge-teal{background:#EAF1FB;color:#123D74}
+.badge-emerald{background:#DCE6F5;color:#123D74}
+.badge-amber{background:#fef9c3;color:#d97706}
+.badge-rose{background:#fee2e2;color:#e11d48}
+.badge-violet{background:#ede9fe;color:#7c3aed}
+.badge-sky{background:#EAF1FB;color:#0369a1}
+
+/* TABLES */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 14px;text-align:left;font-size:.68rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #DCE6F5;background:#F6F9FD}
+td{padding:11px 14px;font-size:.78rem;color:#475569;border-bottom:1px solid #F6F9FD}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.form-grid.three{grid-template-columns:1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group label{font-size:.68rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+.form-group input,.form-group select,.form-group textarea{padding:9px 12px;background:#F6F9FD;border:1.5px solid var(--border);border-radius:var(--radius);font-size:.82rem;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(26,86,160,.1);background:#fff}
+
+/* PATIENT CARD */
+.pac-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden;transition:box-shadow .15s}
+.pac-card:hover{box-shadow:var(--shadow-lg)}
+.pac-header{display:flex;align-items:center;gap:14px;padding:14px 18px;cursor:pointer}
+.pac-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#EAF1FB,#5B85C2);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:var(--teal-dark);flex-shrink:0}
+.pac-name{font-size:.84rem;font-weight:600;color:var(--text)}
+.pac-sub{font-size:.68rem;color:#64748b;margin-top:2px}
+.pac-hora{margin-left:auto;background:var(--teal-light);color:var(--teal-dark);padding:4px 12px;border-radius:20px;font-size:.72rem;font-weight:700}
+.pac-body{padding:0 18px 18px;display:none}
+.pac-body.open{display:block}
+.pac-section{margin-top:16px;padding:14px 16px;background:#F6F9FD;border-radius:var(--radius);border:1px solid var(--border)}
+.pac-section-title{font-size:.7rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.input-mic{display:flex;gap:6px;align-items:center}
+.input-mic input{flex:1}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:#fff;padding:11px 22px;border-radius:50px;font-size:.78rem;font-weight:500;z-index:600;transition:transform .3s;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-lg)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@keyframes pulse-btn{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+
+/* RESPONSIVE */
+@media(max-width:900px){.stats-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}}
+@media(max-width:600px){
+  .stats-grid{grid-template-columns:1fr}
+  .topbar-medico{flex-direction:column;align-items:flex-start;gap:10px}
+  .topbar-medico-right{width:100%;justify-content:space-between}
+}
+</style>
+</head>
+<body style="display:none">
+
+<aside class="sidebar">
+  <div class="sb-header">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🏥</div>
+      <div>
+        <div class="sb-logo-name">SyscobfactCLINIC</div>
+        <div class="sb-logo-sub">Panel Médico</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sb-nav" id="sbNavMedico">
+    <button class="nav-item active" id="navMisPacientes" onclick="mostrarSeccionMedico('pacientes')"><i class="fas fa-stethoscope"></i><span>👥 Mis Pacientes</span></button>
+    <button class="nav-item" id="navIncapacidadesMedico" onclick="mostrarSeccionMedico('incapacidades')"><i class="fas fa-file-medical-alt"></i><span>📋 Incapacidades</span></button>
+  </nav>
+  <div class="sb-footer">
+    <div class="sb-user">
+      <div class="sb-user-avatar">👨‍⚕️</div>
+      <div>
+        <div class="sb-user-name" id="sbMedNombre">—</div>
+        <div class="sb-user-role" id="sbMedEspecialidad">—</div>
+      </div>
+    </div>
+    <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button>
+  </div>
+</aside>
+
+<div class="main">
+
+<header class="topbar-medico">
+  <div class="topbar-medico-logo">
+    <div class="topbar-medico-icon">🏥</div>
+    <div>
+      <div class="topbar-medico-name" id="topbarMedicoClinicaNombre">SyscobfactCLINIC</div>
+      <div class="topbar-medico-sub">Dashboard Médico</div>
+    </div>
+  </div>
+  <div class="topbar-medico-right">
+    <div class="topbar-medico-doc">
+      <div class="topbar-medico-doc-name" id="medNombre">—</div>
+      <div class="topbar-medico-doc-esp" id="medEspecialidad">—</div>
+    </div>
+    <button class="btn-logout-top" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</button>
+  </div>
+</header>
+
+<div id="sinFichaMsg" class="card" style="display:none;max-width:520px;margin:60px auto;text-align:center;padding:40px">
+  <div style="font-size:2.5rem;margin-bottom:14px">⚠️</div>
+  <h2 style="font-family:var(--font-display);font-size:1.15rem;color:var(--text);margin-bottom:8px">No se encontró tu ficha médica</h2>
+  <p style="font-size:.85rem;color:#64748b;line-height:1.6">
+    Tu cuenta de acceso existe, pero no hay una ficha de médico asociada a tu correo en esta clínica.
+    Contacta al administrador de tu clínica para que la cree.
+  </p>
+  <button class="btn-logout-top" style="margin-top:20px" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+</div>
+
+<div class="content" id="mainContentWrap">
+  <div id="mainContent"></div>
+</div>
+
+</div><!-- /.main -->
+
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+
+<script>
+// ════ CONFIGURACIÓN SUPABASE ══════════════════════════════
+const SUPABASE_URL = 'https://jhprliiconsmqqvtkvpo.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHJsaWljb25zbXFxdnRrdnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTYzOTYsImV4cCI6MjA4NTc5MjM5Nn0.bTF1uIgUnWXD_-J5JAhCdTJ6nTA7lkLtLMgFoG50NEI';
+let CLINICA_ID = localStorage.getItem('medico_clinica_id');
+
+const { createClient } = supabase;
+
+const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  db: { schema: 'sistema_clinica_v2' },
+  global: {
+    headers: {
+      'Accept-Profile':  'sistema_clinica_v2',
+      'Content-Profile': 'sistema_clinica_v2'
+    }
+  }
+});
+
+const dbStorage = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+function fechaLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ══ AUDIT LOG ════════════════════════════════════════════
+async function auditLog(tabla, operacion, registroId, descripcion, datosNuevos = null) {
+  const payload = {
+    clinica_id:     CLINICA_ID,
+    tabla,
+    operacion,
+    registro_id:    registroId || null,
+    descripcion,
+    usuario_nombre: currentUser?.name || 'Sistema',
+    usuario_rol:    currentUser?.role || '—',
+    datos_nuevos:   datosNuevos,
+  };
+  try {
+    const { error } = await db.from('audit_log').insert([payload]);
+    if (error) console.error('[audit_log] ERROR de Supabase →', error);
+  } catch (e) {
+    console.error('[audit_log] excepción inesperada →', e);
+  }
+}
+
+// ════ ESTADO GLOBAL ═══════════════════════════════════════
+let pacientes        = [];
+let medicos           = [];
+let citas             = [];
+let historialClinico  = [];
+let examenes          = [];
+let recetas           = [];
+let incapacidades     = [];
+let examenesTemp      = {};
+let medicamentosTemp  = {};
+let currentUser       = { role: null, name: null, id: null };
+let medicoActual      = null; // fila completa de la tabla `medicos` que corresponde al médico logueado (buscada por email, no por currentUser.id — ver bootSesion)
+let hoy = fechaLocal();
+let pacienteEnAtencion = null; // id del paciente actualmente en atención
+
+// ════ HELPERS ═════════════════════════════════════════════
+const getPac = (id) => pacientes.find(p => p.id === id);
+const getMed = (id) => medicos.find(m => m.id === id);
+
+// Lista de incapacidades dentro del historial del paciente — usada tanto en
+// "Pacientes con cita hoy" como en el resultado de "Buscar Historial del
+// Paciente" (abrirHistorialPaciente). Muestra TODAS las incapacidades del
+// paciente, sin filtrar por médico ni por fecha (a diferencia de
+// renderIncapacidadesPanel, que solo lista las emitidas hoy en el flujo de
+// "Emitir certificado").
+function renderIncapacidadesHistorialHTML(items) {
+  if (!items || !items.length) {
+    return '<p style="font-size:.75rem;color:#94a3b8;padding:8px 0">Sin incapacidades emitidas para este paciente</p>';
+  }
+  return items.map(i => `
+    <div style="border:1.5px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#fffbeb;border-left:3px solid #f59e0b">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:.8rem;font-weight:700;color:#92400e">${i.numero || '—'}</span>
+        <span style="font-size:.6rem;background:#fef9c3;color:#d97706;padding:2px 10px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">${i.tipo || '—'}</span>
+      </div>
+      <div style="font-size:.75rem;color:#374151;margin-bottom:4px">
+        📅 ${i.fecha_inicio || '—'} al ${i.fecha_fin || '—'} · ${i.dias_reposo ?? '—'} día${i.dias_reposo !== 1 ? 's' : ''} de reposo
+      </div>
+      <div style="font-size:.75rem;color:#374151;margin-bottom:4px">
+        <strong>Diagnóstico:</strong> ${i.diagnostico || '—'}
+      </div>
+      <div style="font-size:.68rem;color:#64748b">
+        👨‍⚕️ Emitido por: ${i.medico_nombre || getMed(i.medico_id)?.nombre_completo || '—'}
+      </div>
+    </div>`).join('');
+}
+const ini = (n) => {
+  if (!n) return '??';
+  return n.split(' ').map(x => x[0]).join('').substring(0, 2).toUpperCase();
+};
+const getCitasHoy = (mid = null) => {
+  let f = citas.filter(c => c.fecha === hoy);
+  return mid ? f.filter(c => c.medico_id === mid) : f;
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── TRADUCCIÓN DE ERRORES ─────────────────────────────────
+function translateError(err) {
+  if (!navigator.onLine) return 'Sin conexión a internet. Verifica tu red e intenta nuevamente.';
+  if (!err) return 'Error inesperado. Intenta nuevamente.';
+  const msg = (err.message || err.toString()).toLowerCase();
+  if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed'))
+    return 'Error de red. Verifica tu conexión a internet.';
+  if (msg.includes('jwt') || msg.includes('invalid token') || msg.includes('expired'))
+    return 'Tu sesión ha expirado. Por favor inicia sesión nuevamente.';
+  if (msg.includes('duplicate') || msg.includes('unique') || msg.includes('already exists'))
+    return 'Ya existe un registro con esos datos (duplicado).';
+  if (msg.includes('foreign key') || msg.includes('violates foreign'))
+    return 'No se puede completar: el registro tiene dependencias.';
+  if (msg.includes('permission denied') || msg.includes('policy'))
+    return 'No tienes permiso para realizar esta acción.';
+  if (msg.includes('timeout'))
+    return 'La operación tardó demasiado. Intenta nuevamente.';
+  if (msg.includes('not found') || msg.includes('no rows'))
+    return 'Registro no encontrado.';
+  return err.message || 'Error inesperado. Intenta nuevamente.';
+}
+
+// ── DETECCIÓN DE RED ──────────────────────────────────────
+window.addEventListener('offline', () => {
+  showToast('⚠️ Sin conexión a internet — los cambios no se guardarán');
+});
+window.addEventListener('online', () => {
+  showToast('✅ Conexión a internet restaurada');
+});
+
+// ── UTILIDADES DE VALIDACIÓN ──────────────────────────────
+function showFieldError(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('field-error');
+  let m = document.getElementById(id + '_err');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = id + '_err';
+    m.className = 'field-msg';
+    el.parentNode.appendChild(m);
+  }
+  m.textContent = msg;
+  m.classList.add('show');
+}
+
+function clearFieldError(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('field-error');
+  const m = document.getElementById(id + '_err');
+  if (m) { m.textContent = ''; m.classList.remove('show'); }
+}
+
+document.addEventListener('input',  e => { if (e.target.id) clearFieldError(e.target.id); });
+document.addEventListener('change', e => { if (e.target.id) clearFieldError(e.target.id); });
+
+const V = {
+  req:    v => v.trim() !== ''                                                    || 'Este campo es obligatorio',
+  email:  v => !v.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())         || 'Formato inválido (ej: usuario@mail.com)',
+  phone:  v => !v.trim() || /^[\d\-\s\(\)\+]{7,20}$/.test(v.trim())             || 'Solo números y guiones (ej: 6000-0000)',
+  cedula: v => !v.trim() || /^[A-Z0-9]{1,3}-\d{3,5}-\d{4,6}$/i.test(v.trim())  || 'Formato: 8-1234-5678 ó PE-1234-5678',
+  posNum: v => !v.trim() || parseFloat(v) > 0                                    || 'Debe ser un número mayor a 0',
+  futureOrToday: v => !v || v >= fechaLocal()                                    || 'La fecha no puede ser anterior a hoy',
+  minLen: n => v => !v.trim() || v.trim().length >= n                            || `Mínimo ${n} caracteres`,
+};
+
+function validate(fields) {
+  let ok = true;
+  let firstEl = null;
+  fields.forEach(({id, rules}) => {
+    clearFieldError(id);
+    const val = document.getElementById(id)?.value ?? '';
+    for (const rule of rules) {
+      const r = rule(val);
+      if (r !== true) {
+        showFieldError(id, r);
+        if (!firstEl) firstEl = document.getElementById(id);
+        ok = false;
+        break;
+      }
+    }
+  });
+  if (!ok && firstEl) firstEl.focus();
+  return ok;
+}
+
+// ════ CARGAR DATOS DESDE SUPABASE (solo lo que usa el panel médico) ═══
+async function cargarDatos() {
+  if (!navigator.onLine) {
+    showToast('⚠️ Sin conexión — no se pudieron cargar los datos');
+    return;
+  }
+  try {
+    const [
+      { data: med },
+      { data: pac },
+      { data: cit },
+      { data: hist },
+      { data: inc },
+    ] = await Promise.all([
+      db.from('medicos').select('*').eq('clinica_id', CLINICA_ID).eq('estado', 'activo'),
+      db.from('pacientes').select('*').eq('clinica_id', CLINICA_ID).eq('estado', 'activo'),
+      db.from('citas').select('*').eq('clinica_id', CLINICA_ID).order('fecha').order('hora'),
+      db.from('historial_clinico').select('*').eq('clinica_id', CLINICA_ID).order('fecha', { ascending: false }),
+      db.from('incapacidades').select('*').eq('clinica_id', CLINICA_ID).order('created_at', { ascending: false }),
+    ]);
+
+    medicos          = med  || [];
+    pacientes        = pac  || [];
+    citas            = cit  || [];
+    historialClinico = hist || [];
+    incapacidades    = inc  || [];
+
+    console.log(`✅ Datos cargados: ${medicos.length} médicos, ${pacientes.length} pacientes, ${citas.length} citas`);
+  } catch(e) {
+    console.error('Error cargando datos:', e);
+    showToast('❌ ' + translateError(e));
+  }
+}
+
+function logout() {
+  localStorage.removeItem('medico_clinica_id');
+  localStorage.removeItem('medico_nombre');
+  localStorage.removeItem('medico_email');
+  localStorage.removeItem('medico_rol');
+  localStorage.removeItem('medico_tipo');
+  window.location.replace('../Login/index.html');
+}
+
+// ════════════════════════════════════════════════════════════
+// PANEL MÉDICO — port de PortalAdmin-Simple/index.html (v1)
+// ════════════════════════════════════════════════════════════
+
+// El único dato de género disponible es el prefijo "Dr./Dra." que el propio
+// médico trae en localStorage.getItem('medico_nombre') (no hay columna de
+// género en `medicos`) — si no viene con ese prefijo no hay forma de saber
+// el género, así que cae al saludo neutro "Bienvenido/a".
+function saludoMedico() {
+  const nombre = (localStorage.getItem('medico_nombre') || currentUser?.name || '').trim();
+  if (!nombre) return 'Bienvenido/a 👋';
+
+  const dra = nombre.match(/^dra\.?\s+/i);
+  if (dra) return `Bienvenida, Dra. ${nombre.slice(dra[0].length)} 👋`;
+
+  const dr = nombre.match(/^dr\.?\s+/i);
+  if (dr) return `Bienvenido, Dr. ${nombre.slice(dr[0].length)} 👋`;
+
+  return `Bienvenido/a, ${nombre} 👋`;
+}
+
+function fechaTextoHoy() {
+  const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const hoy = new Date();
+  return dias[hoy.getDay()] + ', ' + hoy.getDate() + ' de ' + meses[hoy.getMonth()] + ' de ' + hoy.getFullYear();
+}
+
+function renderMedicoPanel(){
+  const ch  = getCitasHoy(medicoActual?.id);
+  const m   = medicoActual;
+
+  document.getElementById('mainContent').innerHTML=`
+    <div class="page-title" style="color:#1A56A0;font-weight:500">${saludoMedico()}</div>
+    <div class="page-sub" style="color:var(--text-secondary);font-size:14px">${fechaTextoHoy()}</div>
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat-card teal"><div class="stat-icon"><i class="fas fa-calendar-check"></i></div><div class="stat-num">${ch.length}</div><div class="stat-label">Citas hoy</div></div>
+      <div class="stat-card emerald"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div class="stat-num">${ch.filter(c=>c.estado==='confirmada').length}</div><div class="stat-label">Confirmadas</div></div>
+      <div class="stat-card amber"><div class="stat-icon"><i class="fas fa-clock"></i></div><div class="stat-num">${ch.filter(c=>c.estado==='pendiente').length}</div><div class="stat-label">Pendientes</div></div>
+      <div class="stat-card teal"><div class="stat-icon"><i class="fas fa-stethoscope"></i></div><div class="stat-num">${ch.filter(c=>c.estado==='atendida').length}</div><div class="stat-label">Atendidas</div></div>
+    </div>
+
+    <!-- BUSCADOR DE PACIENTES SIN CITA -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-header">
+    <span class="card-title">🔍 Buscar Historial del Paciente</span>
+    <span style="font-size:.72rem;color:#64748b">Para consultas sin cita — control de resultados</span>
+  </div>
+  <div class="card-body">
+    <div style="display:flex;gap:10px;align-items:center">
+      <input id="buscarPaciente"
+        placeholder="Nombre del paciente..."
+        style="flex:1;padding:9px 12px;background:#EAF1FB;border:1.5px solid #DCE6F5;
+               border-radius:var(--radius);font-size:.82rem;color:var(--text);outline:none"
+        onkeypress="if(event.key==='Enter') buscarPacienteMedico()"
+        oninput="if(this.value.length >= 3) buscarPacienteMedico()">
+      <button class="btn btn-teal" onclick="buscarPacienteMedico()">
+        <i class="fas fa-search"></i> Buscar
+      </button>
+    </div>
+    <div id="resultadoBusqueda" style="margin-top:12px"></div>
+  </div>
+</div>
+
+    <h3 style="font-size:.82rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">
+      📌 Pacientes con cita hoy
+    </h3>
+
+    ${ch.length === 0
+      ? `<div class="card"><div class="card-body" style="text-align:center;padding:40px;color:#94a3b8">
+           <i class="fas fa-calendar-times" style="font-size:2rem;margin-bottom:12px;display:block"></i>
+           No tiene citas programadas para hoy
+         </div></div>`
+      : ch.map(c => {
+          const p  = getPac(c.paciente_id);
+          if (!p) return '';
+          const hc = historialClinico.filter(h => h.paciente_id === p.id);
+          const incPac = incapacidades
+            .filter(i => i.paciente_id === p.id)
+            .sort((a, b) => (b.fecha_inicio || '').localeCompare(a.fecha_inicio || ''));
+          return `<div class="pac-card">
+            <div class="pac-header" onclick="togPac('${p.id}')">
+              <div class="pac-avatar">${ini(p.nombre_completo)}</div>
+              <div>
+                <div class="pac-name">${p.nombre_completo}</div>
+                <div class="pac-sub">
+                  ${calcularEdad(p.fecha_nacimiento)} años ·
+                  ${p.tipo_sangre || '—'} ·
+                  Alergias: ${p.alergias || 'Ninguna'} ·
+                  Seguro: ${p.seguro_medico || '—'}
+                </div>
+              </div>
+              <span class="pac-hora">${c.hora}</span>
+            </div>
+
+            <div class="pac-body" id="pac_${p.id}">
+
+              <!-- ══ HISTORIAL CLÍNICO PREVIO ══ -->
+              <div class="pac-section">
+                <div class="pac-section-title">
+                  <i class="fas fa-history"></i> Historial clínico previo
+                  <span style="margin-left:auto;font-size:.65rem;color:#94a3b8;font-weight:400">
+                    ${hc.length} consulta${hc.length !== 1 ? 's' : ''} registrada${hc.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                ${hc.length === 0
+                  ? '<p style="font-size:.75rem;color:#94a3b8;padding:8px 0">Sin historial previo registrado</p>'
+                  : hc.map(h => `
+                    <div style="border:1.5px solid #DCE6F5;border-radius:10px;margin-bottom:10px;overflow:hidden">
+
+                      <!-- Cabecera del registro — clic para expandir -->
+                      <div onclick="togHistorial('${h.id}')"
+                        style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;background:#EAF1FB;transition:background .15s"
+                        onmouseover="this.style.background='#DCE6F5'"
+                        onmouseout="this.style.background='#EAF1FB'">
+                        <div style="width:36px;height:36px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                          <i class="fas fa-stethoscope" style="color:#fff;font-size:.75rem"></i>
+                        </div>
+                        <div style="flex:1">
+                          <div style="font-size:.8rem;font-weight:700;color:var(--text)">
+                            ${new Date(h.fecha + 'T12:00:00').toLocaleDateString('es-PA',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+                          </div>
+                          <div style="font-size:.7rem;color:var(--teal);font-weight:600;margin-top:2px">
+                            ${h.diagnostico || 'Sin diagnóstico registrado'}
+                          </div>
+                        </div>
+                        <i class="fas fa-chevron-down" id="icon_${h.id}"
+                          style="color:var(--teal);font-size:.75rem;transition:transform .2s"></i>
+                      </div>
+
+                      <!-- Detalle expandible -->
+                      <div id="hist_${h.id}" style="display:none;padding:14px 16px;background:#fff">
+
+                        <!-- Signos vitales -->
+                        ${(h.peso || h.estatura || h.presion || h.temperatura) ? `
+                        <div style="margin-bottom:12px">
+                          <div style="font-size:.65rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+                            ❤️ Signos vitales
+                          </div>
+                          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+                            ${h.peso ? `
+                            <div style="background:#EAF1FB;border-radius:8px;padding:8px 10px;text-align:center">
+                              <div style="font-size:.6rem;color:#64748b">Peso</div>
+                              <div style="font-size:.88rem;font-weight:700;color:var(--text)">${h.peso} kg</div>
+                            </div>` : ''}
+                            ${h.estatura ? `
+                            <div style="background:#EAF1FB;border-radius:8px;padding:8px 10px;text-align:center">
+                              <div style="font-size:.6rem;color:#64748b">Estatura</div>
+                              <div style="font-size:.88rem;font-weight:700;color:var(--text)">${h.estatura} m</div>
+                            </div>` : ''}
+                            ${h.presion ? `
+                            <div style="background:#EAF1FB;border-radius:8px;padding:8px 10px;text-align:center">
+                              <div style="font-size:.6rem;color:#64748b">Presión</div>
+                              <div style="font-size:.88rem;font-weight:700;color:var(--text)">${h.presion}</div>
+                            </div>` : ''}
+                            ${h.temperatura ? `
+                            <div style="background:#EAF1FB;border-radius:8px;padding:8px 10px;text-align:center">
+                              <div style="font-size:.6rem;color:#64748b">Temperatura</div>
+                              <div style="font-size:.88rem;font-weight:700;color:var(--text)">${h.temperatura}°C</div>
+                            </div>` : ''}
+                          </div>
+                        </div>` : ''}
+
+                        <!-- Síntomas -->
+                        ${h.sintomas ? `
+                        <div style="margin-bottom:10px">
+                          <div style="font-size:.65rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">
+                            🎤 Síntomas
+                          </div>
+                          <div style="font-size:.8rem;color:#374151;background:#EAF1FB;padding:8px 12px;border-radius:8px;border-left:3px solid var(--teal)">
+                            ${h.sintomas}
+                          </div>
+                        </div>` : ''}
+
+                        <!-- Diagnóstico -->
+                        ${h.diagnostico ? `
+                        <div style="margin-bottom:10px">
+                          <div style="font-size:.65rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">
+                            🩺 Diagnóstico
+                          </div>
+                          <div style="font-size:.8rem;color:#374151;background:#EAF1FB;padding:8px 12px;border-radius:8px;border-left:3px solid #5B85C2">
+                            ${h.diagnostico}
+                          </div>
+                        </div>` : ''}
+
+                        <!-- Tratamiento -->
+                        ${h.tratamiento ? `
+                        <div style="margin-bottom:10px">
+                          <div style="font-size:.65rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">
+                            💊 Tratamiento
+                          </div>
+                          <div style="font-size:.8rem;color:#374151;background:#EAF1FB;padding:8px 12px;border-radius:8px;border-left:3px solid #8b5cf6">
+                            ${h.tratamiento}
+                          </div>
+                        </div>` : ''}
+
+                        <!-- Observaciones -->
+                        ${h.observaciones ? `
+                        <div style="margin-bottom:10px">
+                          <div style="font-size:.65rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">
+                            📝 Observaciones
+                          </div>
+                          <div style="font-size:.8rem;color:#374151;background:#EAF1FB;padding:8px 12px;border-radius:8px;border-left:3px solid #f59e0b">
+                            ${h.observaciones}
+                          </div>
+                        </div>` : ''}
+
+                        <!-- Exámenes de esa consulta -->
+                        <div style="margin-bottom:10px">
+                          <div style="font-size:.65rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+                            🧪 Exámenes solicitados
+                          </div>
+                          <div id="examenes_hist_${h.id}">
+                            <div style="font-size:.75rem;color:#94a3b8">Cargando exámenes...</div>
+                          </div>
+                        </div>
+
+                        <!-- Recetas de esa consulta -->
+                        <div>
+                          <div style="font-size:.65rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+                            💊 Receta médica
+                          </div>
+                          <div id="recetas_hist_${h.id}">
+                            <div style="font-size:.75rem;color:#94a3b8">Cargando receta...</div>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>`).join('')
+                }
+              </div>
+
+              <!-- ══ INCAPACIDADES DEL PACIENTE ══ -->
+              <div class="pac-section">
+                <div class="pac-section-title">
+                  <i class="fas fa-file-medical-alt"></i> Incapacidades
+                  <span style="margin-left:auto;font-size:.65rem;color:#94a3b8;font-weight:400">
+                    ${incPac.length} emitida${incPac.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                ${renderIncapacidadesHistorialHTML(incPac)}
+              </div>
+
+              <!-- ══ SIGNOS VITALES CONSULTA ACTUAL ══ -->
+              <div class="pac-section">
+                <div class="pac-section-title"><i class="fas fa-heartbeat"></i> Signos vitales</div>
+                <div class="form-grid">
+                  <div class="form-group"><label>⚖️ Peso (kg)</label><input id="peso_${p.id}" placeholder="70"></div>
+                  <div class="form-group"><label>📏 Estatura (m)</label><input id="est_${p.id}" placeholder="1.65"></div>
+                  <div class="form-group"><label>❤️ Presión arterial</label><input id="pres_${p.id}" placeholder="120/80"></div>
+                  <div class="form-group"><label>🌡️ Temperatura °C</label><input id="temp_${p.id}" placeholder="36.5"></div>
+                </div>
+              </div>
+
+              <!-- ══ CONSULTA ACTUAL ══ -->
+              <div class="pac-section">
+                <div class="pac-section-title"><i class="fas fa-stethoscope"></i> Consulta actual</div>
+                <div class="form-group" style="margin-bottom:10px"><label>🎤 Síntomas</label><div class="input-mic"><input id="sint_${p.id}" placeholder="Describa los síntomas..."><button class="btn-mic" onclick="voz('sint_${p.id}')"><i class="fas fa-microphone"></i></button></div></div>
+                <div class="form-group" style="margin-bottom:10px"><label>🩺 Diagnóstico</label><div class="input-mic"><input id="diag_${p.id}" placeholder="Diagnóstico médico..."><button class="btn-mic" onclick="voz('diag_${p.id}')"><i class="fas fa-microphone"></i></button></div></div>
+                <div class="form-group" style="margin-bottom:10px"><label>💊 Tratamiento</label><div class="input-mic"><input id="trat_${p.id}" placeholder="Tratamiento indicado..."><button class="btn-mic" onclick="voz('trat_${p.id}')"><i class="fas fa-microphone"></i></button></div></div>
+                <div class="form-group" style="margin-bottom:14px"><label>📝 Observaciones</label><div class="input-mic"><input id="obs_${p.id}" placeholder="Observaciones..."><button class="btn-mic" onclick="voz('obs_${p.id}')"><i class="fas fa-microphone"></i></button></div></div>
+              </div>
+
+              <!-- ══ EXÁMENES CONSULTA ACTUAL ══ -->
+              <div class="pac-section">
+                <div class="pac-section-title">
+                  <i class="fas fa-flask"></i> Exámenes médicos
+                  <button class="btn btn-outline btn-sm" style="margin-left:auto"
+                    onclick="agregarExamen('${p.id}')">
+                    <i class="fas fa-plus"></i> Agregar examen
+                  </button>
+                </div>
+
+                <!-- Lista de exámenes agregados -->
+                <div id="listaExamenes_${p.id}" style="margin-bottom:10px"></div>
+
+                <!-- Formulario agregar examen -->
+                <div id="formExamen_${p.id}" style="display:none;background:#EAF1FB;border-radius:10px;padding:12px;border:1px solid #DCE6F5;margin-top:8px">
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label>Tipo de examen</label>
+                      <select id="exT_${p.id}">
+                        <option value="">-- Seleccionar --</option>
+                        <option>Hemograma completo</option>
+                        <option>Glicemia en ayunas</option>
+                        <option>Glicemia postprandial</option>
+                        <option>Perfil lipídico</option>
+                        <option>Creatinina sérica</option>
+                        <option>Ácido úrico</option>
+                        <option>Proteínas totales</option>
+                        <option>Transaminasas (TGO/TGP)</option>
+                        <option>Orina completa</option>
+                        <option>Cultivo de orina</option>
+                        <option>Heces completas</option>
+                        <option>Radiografía de tórax</option>
+                        <option>Radiografía de columna</option>
+                        <option>Electrocardiograma</option>
+                        <option>Ultrasonido abdominal</option>
+                        <option>Ultrasonido pélvico</option>
+                        <option>Mamografía</option>
+                        <option>TSH / T4 libre (Tiroides)</option>
+                        <option>PSA (Próstata)</option>
+                        <option>Prueba de embarazo</option>
+                        <option>COVID-19 / Antígeno</option>
+                        <option>Cultivo de garganta</option>
+                        <option>Otro</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Fecha indicada</label>
+                      <input type="date" id="exF_${p.id}" value="${hoy}">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom:10px" id="exOtroWrap_${p.id}" style="display:none">
+                    <label>Especificar examen</label>
+                    <input type="text" id="exOtro_${p.id}" placeholder="Nombre del examen...">
+                  </div>
+                  <div style="display:flex;gap:8px">
+                    <button class="btn btn-teal btn-sm" onclick="gExamen('${p.id}')">
+                      <i class="fas fa-check"></i> Confirmar
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="cancelarExamen('${p.id}')">
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botón imprimir orden -->
+              <div style="margin-top:12px">
+                  <button class="btn btn-teal btn-sm" onclick="prtOrdenExamenes('${p.id}')">
+                  <i class="fas fa-print"></i> Imprimir orden de exámenes
+                </button>
+              </div>
+
+              <!-- ══ RECETA CONSULTA ACTUAL ══ -->
+              <div class="pac-section">
+                <div class="pac-section-title">
+                  <i class="fas fa-prescription-bottle"></i> Receta médica
+                  <button class="btn btn-outline btn-sm" style="margin-left:auto"
+                    onclick="agregarMedicamento('${p.id}')">
+                    <i class="fas fa-plus"></i> Agregar medicamento
+                  </button>
+                </div>
+
+                <!-- Lista de medicamentos agregados -->
+                <div id="listaMedicamentos_${p.id}" style="margin-bottom:10px"></div>
+
+                <!-- Formulario agregar medicamento -->
+                <div id="formReceta_${p.id}" style="display:none;background:#EAF1FB;border-radius:10px;padding:12px;border:1px solid #DCE6F5;margin-top:8px">
+                  <div class="form-grid three">
+                    <div class="form-group">
+                      <label>Medicamento</label>
+                      <input id="rM_${p.id}" placeholder="Amoxicilina 500mg">
+                    </div>
+                    <div class="form-group">
+                      <label>Dosis</label>
+                      <input id="rD_${p.id}" placeholder="1 tableta">
+                    </div>
+                    <div class="form-group">
+                      <label>Frecuencia</label>
+                      <input id="rF_${p.id}" placeholder="Cada 8 horas">
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px">
+                    <button class="btn btn-teal btn-sm" onclick="gReceta('${p.id}')">
+                      <i class="fas fa-check"></i> Confirmar
+                  </button>
+                  <button class="btn btn-outline btn-sm" onclick="cancelarMedicamento('${p.id}')">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+
+              <!-- Botón imprimir -->
+              <div style="margin-top:12px">
+                <button class="btn btn-teal btn-sm" onclick="prtReceta('${p.id}')">
+                  <i class="fas fa-print"></i> Imprimir receta
+                </button>
+              </div>
+            </div>
+
+              <!-- ══ CERTIFICADO DE INCAPACIDAD ══ -->
+              <div class="pac-section">
+                <div class="pac-section-title">
+                  <i class="fas fa-file-medical-alt"></i> Certificado de Incapacidad
+                  <button class="btn btn-outline btn-sm" style="margin-left:auto;color:#92400e;border-color:#fed7aa"
+                    onclick="toggleIncapacidadForm('${p.id}')">
+                    <i class="fas fa-plus"></i> Emitir certificado
+                  </button>
+                </div>
+                <div id="listaIncapacidades_${p.id}" style="margin-bottom:8px"></div>
+                <div id="formIncapacidad_${p.id}" style="display:none;background:#fffbeb;border-radius:10px;padding:14px;border:1.5px solid #fde68a;margin-top:8px">
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label>Tipo de incapacidad</label>
+                      <select id="incTipoP_${p.id}">
+                        <option value="Enfermedad común">Enfermedad común</option>
+                        <option value="Accidente de trabajo">Accidente de trabajo</option>
+                        <option value="Accidente no laboral">Accidente no laboral</option>
+                        <option value="Maternidad">Maternidad</option>
+                        <option value="Enfermedad profesional">Enfermedad profesional</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Días de reposo *</label>
+                      <input type="number" id="incDiasP_${p.id}" min="1" placeholder="3"
+                        oninput="calcIncFechaFin('incDiasP_${p.id}','incInicioP_${p.id}','incFinP_${p.id}')"
+                        onchange="calcIncFechaFin('incDiasP_${p.id}','incInicioP_${p.id}','incFinP_${p.id}')">
+                    </div>
+                    <div class="form-group">
+                      <label>Fecha inicio *</label>
+                      <input type="date" id="incInicioP_${p.id}" value="${hoy}"
+                        oninput="calcIncFechaFin('incDiasP_${p.id}','incInicioP_${p.id}','incFinP_${p.id}')"
+                        onchange="calcIncFechaFin('incDiasP_${p.id}','incInicioP_${p.id}','incFinP_${p.id}')">
+                    </div>
+                    <div class="form-group">
+                      <label>Fecha fin reposo</label>
+                      <input type="date" id="incFinP_${p.id}"
+                        placeholder="Se calcula al ingresar días"
+                        title="Se calcula automáticamente. Puedes modificarla manualmente.">
+                    </div>
+                    <div class="form-group">
+                      <label>Diagnóstico *</label>
+                      <input id="incDiagP_${p.id}" placeholder="Diagnóstico médico...">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom:12px">
+                    <label>Observaciones / indicaciones</label>
+                    <input id="incObsP_${p.id}" placeholder="Restricciones, seguimiento...">
+                  </div>
+                  <div style="display:flex;gap:8px">
+                    <button class="btn btn-sm" id="btnIncP_${p.id}"
+                      style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer"
+                      onclick="emitirIncapacidadPanel('${p.id}')">
+                      <i class="fas fa-file-medical"></i> Emitir e imprimir
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="toggleIncapacidadForm('${p.id}')">Cancelar</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top:16px">
+              <button class="btn btn-teal" id="btnGuardar_${p.id}" onclick="gConsulta('${p.id}')">
+                <i class="fas fa-save"></i> Guardar consulta completa
+              </button>
+              </div>
+
+            </div>
+          </div>`;
+        }).join('')
+    }`;
+}
+
+// ── TOGGLE HISTORIAL ──────────────────────────────────────
+function togHistorial(histId) {
+  const det  = document.getElementById('hist_'  + histId);
+  const icon = document.getElementById('icon_'  + histId);
+  if (!det) return;
+
+  const abierto = det.style.display === 'block';
+
+  if (!abierto) {
+    det.style.display = 'block';
+    icon.style.transform = 'rotate(180deg)';
+    cargarDetalleHistorial(histId);
+  } else {
+    det.style.display = 'none';
+    icon.style.transform = 'rotate(0deg)';
+  }
+}
+
+// ── CARGAR EXÁMENES Y RECETAS DEL HISTORIAL ───────────────
+async function cargarDetalleHistorial(histId) {
+  const h = historialClinico.find(x => x.id === histId);
+  if (!h) return;
+
+  const { data: exams } = await db
+    .from('examenes')
+    .select('*')
+    .eq('clinica_id', CLINICA_ID)
+    .eq('paciente_id', h.paciente_id)
+    .eq('fecha', h.fecha)
+    .order('created_at');
+
+  const { data: recs } = await db
+    .from('recetas')
+    .select('*')
+    .eq('clinica_id', CLINICA_ID)
+    .eq('paciente_id', h.paciente_id)
+    .eq('fecha', h.fecha)
+    .order('created_at');
+
+  // Renderizar exámenes
+  const elExam = document.getElementById('examenes_hist_' + histId);
+  if (elExam) {
+  elExam.innerHTML = (exams && exams.length)
+    ? exams.map(e => `
+      <div style="background:#EAF1FB;border:1.5px solid #DCE6F5;border-radius:10px;
+                  padding:12px 14px;margin-bottom:8px">
+
+        <!-- Encabezado del examen -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div>
+            <div style="font-size:.82rem;font-weight:700;color:var(--text)">
+              🧪 ${e.tipo}
+            </div>
+            <div style="font-size:.65rem;color:#64748b">
+              Solicitado: ${e.fecha || '—'}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${e.resultado_texto || e.imagen_url
+              ? `<span style="background:#DCE6F5;color:#123D74;padding:3px 10px;
+                             border-radius:20px;font-size:.65rem;font-weight:700">
+                   ✅ Completado
+                 </span>`
+              : `<span style="background:#fef9c3;color:#d97706;padding:3px 10px;
+                             border-radius:20px;font-size:.65rem;font-weight:700">
+                   ⏳ Pendiente
+                 </span>`
+            }
+            ${!e.resultado_texto && !e.imagen_url
+              ? `<button onclick="abrirFormResultado('${e.id}','${histId}')"
+                  class="btn btn-teal btn-sm">
+                  <i class="fas fa-upload"></i> Ingresar resultado
+                </button>`
+              : `<button onclick="abrirFormResultado('${e.id}','${histId}')"
+                  class="btn btn-outline btn-sm">
+                  <i class="fas fa-edit"></i> Editar
+                </button>`
+            }
+          </div>
+        </div>
+
+        <!-- Imagen del resultado si existe -->
+        ${e.imagen_url ? `
+          <div style="margin-bottom:8px">
+            <img src="${e.imagen_url}"
+              style="max-width:100%;border-radius:8px;border:1px solid #DCE6F5;cursor:pointer"
+              onclick="window.open('${e.imagen_url}','_blank')"
+              title="Clic para ver en tamaño completo">
+          </div>` : ''}
+
+        <!-- Resultado en texto -->
+        ${e.resultado_texto ? `
+          <div style="margin-bottom:6px">
+            <div style="font-size:.65rem;font-weight:700;color:var(--teal);
+                        text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">
+              📋 Resultado
+            </div>
+            <div style="font-size:.78rem;color:#374151;background:#fff;
+                        padding:8px 12px;border-radius:8px;border-left:3px solid var(--teal)">
+              ${e.resultado_texto}
+            </div>
+          </div>` : ''}
+
+        <!-- Interpretación del médico -->
+        ${e.interpretacion ? `
+          <div>
+            <div style="font-size:.65rem;font-weight:700;color:var(--teal);
+                        text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">
+              🩺 Interpretación del médico
+            </div>
+            <div style="font-size:.78rem;color:#374151;background:#fff;
+                        padding:8px 12px;border-radius:8px;border-left:3px solid #5B85C2">
+              ${e.interpretacion}
+            </div>
+          </div>` : ''}
+
+        <!-- Formulario ingresar resultado (oculto) -->
+        <div id="formResultado_${e.id}" style="display:none;margin-top:12px;
+             background:#fff;border-radius:10px;padding:12px;border:1px solid #DCE6F5">
+          <div style="font-size:.68rem;font-weight:700;color:var(--teal);
+                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+            📸 Ingresar resultado del examen
+          </div>
+
+          <!-- Subir imagen -->
+          <div class="form-group" style="margin-bottom:10px">
+            <label>📸 Foto del resultado (laboratorio)</label>
+            <input type="file" id="imgExamen_${e.id}"
+              accept="image/*,.pdf"
+              style="padding:8px;background:#EAF1FB;border:1.5px solid #DCE6F5;
+                     border-radius:8px;width:100%;font-size:.78rem">
+            <div style="font-size:.65rem;color:#94a3b8;margin-top:4px">
+              Acepta: JPG, PNG, PDF — Máx. 5MB
+            </div>
+          </div>
+
+          <!-- Resultado en texto -->
+          <div class="form-group" style="margin-bottom:10px">
+            <label>📋 Resultado (texto)</label>
+            <textarea id="txtResultado_${e.id}" rows="3"
+              placeholder="Ej: Hemoglobina 12.5 g/dL — Normal&#10;Leucocitos 8,500 — Normal"
+              style="width:100%;padding:8px 12px;background:#EAF1FB;border:1.5px solid #DCE6F5;
+                     border-radius:8px;font-size:.82rem;resize:vertical"
+            >${e.resultado_texto || ''}</textarea>
+          </div>
+
+          <!-- Interpretación -->
+          <div class="form-group" style="margin-bottom:12px">
+            <label>🩺 Interpretación del médico</label>
+            <div style="display:flex;gap:6px;align-items:flex-start">
+              <textarea id="txtInterpretacion_${e.id}" rows="2"
+                placeholder="Ej: Valores dentro del rango normal. No se detectan anomalías."
+                style="flex:1;padding:8px 12px;background:#EAF1FB;border:1.5px solid #DCE6F5;
+                       border-radius:8px;font-size:.82rem;resize:vertical"
+              >${e.interpretacion || ''}</textarea>
+              <button class="btn-mic" onclick="voz('txtInterpretacion_${e.id}')">
+                <i class="fas fa-microphone"></i>
+              </button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-teal btn-sm"
+              onclick="guardarResultadoExamen('${e.id}','${histId}')">
+              <i class="fas fa-save"></i> Guardar resultado
+            </button>
+            <button class="btn btn-outline btn-sm"
+              onclick="cerrarFormResultado('${e.id}')">
+              Cancelar
+            </button>
+          </div>
+        </div>
+
+      </div>`).join('')
+    : '<p style="font-size:.75rem;color:#94a3b8">Sin exámenes solicitados en esta consulta</p>';
+}
+
+  // Renderizar recetas
+  const elRec = document.getElementById('recetas_hist_' + histId);
+  if (elRec) {
+    elRec.innerHTML = (recs && recs.length)
+      ? `<div style="background:#EAF1FB;border-radius:8px;padding:10px 12px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="font-size:.65rem;font-weight:700;color:var(--teal);text-align:left;
+                           padding:4px 8px;border-bottom:1px solid #DCE6F5">Medicamento</th>
+                <th style="font-size:.65rem;font-weight:700;color:var(--teal);text-align:left;
+                           padding:4px 8px;border-bottom:1px solid #DCE6F5">Dosis</th>
+                <th style="font-size:.65rem;font-weight:700;color:var(--teal);text-align:left;
+                           padding:4px 8px;border-bottom:1px solid #DCE6F5">Frecuencia</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${recs.map(r => `
+                <tr>
+                  <td style="font-size:.78rem;padding:6px 8px;color:var(--text);font-weight:500">${r.medicamento}</td>
+                  <td style="font-size:.78rem;padding:6px 8px;color:#64748b">${r.dosis || '—'}</td>
+                  <td style="font-size:.78rem;padding:6px 8px;color:#64748b">${r.frecuencia || '—'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+         </div>`
+      : '<p style="font-size:.75rem;color:#94a3b8">Sin receta médica en esta consulta</p>';
+  }
+}
+
+// ── RESULTADOS DE EXÁMENES ────────────────────────────────
+window.abrirFormResultado = function(exId, histId) {
+  document.querySelectorAll('[id^="formResultado_"]').forEach(f => {
+    f.style.display = 'none';
+  });
+  const form = document.getElementById('formResultado_' + exId);
+  if (form) form.style.display = 'block';
+}
+
+window.cerrarFormResultado = function(exId) {
+  const form = document.getElementById('formResultado_' + exId);
+  if (form) form.style.display = 'none';
+}
+
+window.guardarResultadoExamen = async function(exId, histId) {
+  const txtResultado      = document.getElementById('txtResultado_'      + exId)?.value.trim();
+  const txtInterpretacion = document.getElementById('txtInterpretacion_' + exId)?.value.trim();
+  const fileInput         = document.getElementById('imgExamen_'         + exId);
+  const file              = fileInput?.files?.[0];
+
+  if (!txtResultado && !file) {
+    showToast('⚠️ Ingresa el resultado o sube una imagen');
+    return;
+  }
+
+  const btn = document.querySelector(`#formResultado_${exId} .btn-teal`);
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  }
+
+  let imagen_url = null;
+
+  if (file) {
+    const ext      = file.name.split('.').pop();
+    const fileName = `${CLINICA_ID}/${exId}_${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await dbStorage
+      .storage
+      .from('examenes-resultados')
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) {
+      showToast('❌ Error subiendo imagen: ' + uploadError.message);
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Guardar resultado'; }
+      return;
+    }
+
+    const { data: urlData } = dbStorage
+      .storage
+      .from('examenes-resultados')
+      .getPublicUrl(fileName);
+
+    imagen_url = urlData?.publicUrl;
+  }
+
+  const { error } = await db.from('examenes').update({
+    resultado_texto:  txtResultado       || null,
+    interpretacion:   txtInterpretacion  || null,
+    imagen_url:       imagen_url         || null,
+    fecha_resultado:  fechaLocal(),
+    resultado:        'Completado'
+  }).eq('id', exId);
+
+  if (error) {
+    showToast('❌ ' + translateError(error));
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Guardar resultado'; }
+    return;
+  }
+
+  showToast('✅ Resultado guardado correctamente');
+  window.cerrarFormResultado(exId);
+  cargarDetalleHistorial(histId);
+}
+
+// ── BUSCADOR DE PACIENTES ─────────────────────────────────
+function buscarPacienteMedico() {
+  const query = document.getElementById('buscarPaciente')?.value.trim().toLowerCase();
+  const resultado = document.getElementById('resultadoBusqueda');
+  if (!resultado) return;
+
+  if (!query || query.length < 2) {
+    resultado.innerHTML = '';
+    return;
+  }
+
+  const encontrados = pacientes.filter(p =>
+    p.nombre_completo?.toLowerCase().includes(query) ||
+    p.cedula?.toLowerCase().includes(query)
+  );
+
+  if (!encontrados.length) {
+    resultado.innerHTML = `
+      <p style="font-size:.78rem;color:#94a3b8;padding:8px 0">
+        No se encontraron pacientes con ese nombre o cédula
+      </p>`;
+    return;
+  }
+
+  resultado.innerHTML = encontrados.map(p => `
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:10px 14px;background:#EAF1FB;border-radius:10px;
+                margin-bottom:8px;border:1.5px solid #DCE6F5;cursor:pointer;
+                transition:all .15s"
+      onmouseover="this.style.borderColor='var(--teal)'"
+      onmouseout="this.style.borderColor='#DCE6F5'">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:38px;height:38px;border-radius:50%;
+                    background:linear-gradient(135deg,#EAF1FB,#5B85C2);
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:.82rem;font-weight:700;color:var(--teal-dark)">
+          ${ini(p.nombre_completo)}
+        </div>
+        <div>
+          <div style="font-size:.82rem;font-weight:600;color:var(--text)">
+            ${p.nombre_completo}
+          </div>
+          <div style="font-size:.68rem;color:#64748b">
+            Cédula: ${p.cedula||'—'} ·
+            ${calcularEdad(p.fecha_nacimiento)} años ·
+            ${p.seguro_medico||'—'}
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-teal btn-sm"
+        onclick="abrirHistorialPaciente('${p.id}')">
+        <i class="fas fa-folder-open"></i> Ver historial
+      </button>
+    </div>`).join('');
+}
+
+// ── ABRIR HISTORIAL SIN CITA ──────────────────────────────
+async function abrirHistorialPaciente(pacId) {
+  const p  = getPac(pacId);
+  if (!p) return;
+
+  document.getElementById('buscarPaciente').value = '';
+  document.getElementById('resultadoBusqueda').innerHTML = '';
+
+  const { data: hc } = await db
+    .from('historial_clinico')
+    .select('*')
+    .eq('paciente_id', pacId)
+    .eq('clinica_id', CLINICA_ID)
+    .order('fecha', { ascending: false });
+
+  const { data: recsData } = await db
+    .from('recetas')
+    .select('*')
+    .eq('paciente_id', pacId)
+    .eq('clinica_id', CLINICA_ID)
+    .order('created_at', { ascending: false });
+
+  if (recsData) recsData.forEach(r => {
+    if (!recetas.find(x => x.id === r.id)) recetas.push(r);
+  });
+
+  const { data: incData } = await db
+    .from('incapacidades')
+    .select('*')
+    .eq('clinica_id', CLINICA_ID)
+    .eq('paciente_id', pacId)
+    .order('fecha_inicio', { ascending: false });
+
+  const historial = hc || [];
+  const incPacienteSinCita = incData || [];
+
+  const contenedor = document.createElement('div');
+  contenedor.id = 'panelPacienteSinCita';
+  contenedor.innerHTML = `
+    <div class="pac-card" style="border:2px solid var(--teal)">
+      <div class="pac-header" onclick="togPac('sinCita_${p.id}')">
+        <div class="pac-avatar">${ini(p.nombre_completo)}</div>
+        <div>
+          <div class="pac-name">${p.nombre_completo}</div>
+          <div class="pac-sub">
+            ${calcularEdad(p.fecha_nacimiento)} años ·
+            ${p.tipo_sangre||'—'} ·
+            Alergias: ${p.alergias||'Ninguna'} ·
+            Seguro: ${p.seguro_medico||'—'}
+          </div>
+        </div>
+        <span class="pac-hora" style="background:#8b5cf6;color:#fff">
+          🔍 Sin cita
+        </span>
+      </div>
+
+      <div class="pac-body open" id="pac_sinCita_${p.id}">
+
+        <!-- HISTORIAL PREVIO -->
+        <div class="pac-section">
+          <div class="pac-section-title">
+            <i class="fas fa-history"></i> Historial clínico
+            <span style="margin-left:auto;font-size:.65rem;color:#94a3b8;font-weight:400">
+              ${historial.length} consulta${historial.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          ${historial.length === 0
+            ? '<p style="font-size:.75rem;color:#94a3b8">Sin historial registrado</p>'
+            : historial.map(h => `
+              <div style="border:1.5px solid #DCE6F5;border-radius:10px;margin-bottom:10px;overflow:hidden">
+                <div onclick="togHistorial('${h.id}')"
+                  style="display:flex;align-items:center;gap:12px;padding:10px 14px;
+                         cursor:pointer;background:#EAF1FB"
+                  onmouseover="this.style.background='#DCE6F5'"
+                  onmouseout="this.style.background='#EAF1FB'">
+                  <div style="width:36px;height:36px;border-radius:50%;background:var(--teal);
+                              display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <i class="fas fa-stethoscope" style="color:#fff;font-size:.75rem"></i>
+                  </div>
+                  <div style="flex:1">
+                    <div style="font-size:.8rem;font-weight:700;color:var(--text)">
+                      ${new Date(h.fecha+'T12:00:00').toLocaleDateString('es-PA',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+                    </div>
+                    <div style="font-size:.7rem;color:var(--teal);font-weight:600;margin-top:2px">
+                      ${h.diagnostico||'Sin diagnóstico'}
+                    </div>
+                  </div>
+                  <i class="fas fa-chevron-down" id="icon_${h.id}"
+                    style="color:var(--teal);font-size:.75rem;transition:transform .2s"></i>
+                </div>
+                <div id="hist_${h.id}" style="display:none;padding:14px 16px;background:#fff">
+
+                  <!-- Signos vitales -->
+                  ${(h.peso || h.estatura || h.presion || h.temperatura) ? `
+                  <div style="margin-bottom:12px">
+                    <div style="font-size:.65rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+                      ❤️ Signos vitales
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+                      ${h.peso ? `
+                      <div style="background:#EAF1FB;border-radius:8px;padding:8px 10px;text-align:center">
+                        <div style="font-size:.6rem;color:#64748b">Peso</div>
+                        <div style="font-size:.88rem;font-weight:700;color:var(--text)">${h.peso} kg</div>
+                      </div>` : ''}
+                      ${h.estatura ? `
+                      <div style="background:#EAF1FB;border-radius:8px;padding:8px 10px;text-align:center">
+                        <div style="font-size:.6rem;color:#64748b">Estatura</div>
+                        <div style="font-size:.88rem;font-weight:700;color:var(--text)">${h.estatura} m</div>
+                      </div>` : ''}
+                      ${h.presion ? `
+                      <div style="background:#EAF1FB;border-radius:8px;padding:8px 10px;text-align:center">
+                        <div style="font-size:.6rem;color:#64748b">Presión</div>
+                        <div style="font-size:.88rem;font-weight:700;color:var(--text)">${h.presion}</div>
+                      </div>` : ''}
+                      ${h.temperatura ? `
+                      <div style="background:#EAF1FB;border-radius:8px;padding:8px 10px;text-align:center">
+                        <div style="font-size:.6rem;color:#64748b">Temperatura</div>
+                        <div style="font-size:.88rem;font-weight:700;color:var(--text)">${h.temperatura}°C</div>
+                      </div>` : ''}
+                    </div>
+                  </div>` : ''}
+
+                  <div style="font-size:.65rem;font-weight:700;color:var(--teal);
+                              text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+                    🧪 Exámenes solicitados
+                  </div>
+                  <div id="examenes_hist_${h.id}">
+                    <div style="font-size:.75rem;color:#94a3b8">Cargando...</div>
+                  </div>
+                  <div style="font-size:.65rem;font-weight:700;color:var(--teal);
+                              text-transform:uppercase;letter-spacing:.05em;
+                              margin-top:12px;margin-bottom:8px">
+                    💊 Recetas previas
+                  </div>
+                  <div id="recetas_hist_${h.id}">
+                    <div style="font-size:.75rem;color:#94a3b8">Cargando...</div>
+                  </div>
+                </div>
+              </div>`).join('')}
+        </div>
+
+        <!-- ══ INCAPACIDADES DEL PACIENTE (sin cita) ══ -->
+        <div class="pac-section">
+          <div class="pac-section-title">
+            <i class="fas fa-file-medical-alt"></i> Incapacidades
+            <span style="margin-left:auto;font-size:.65rem;color:#94a3b8;font-weight:400">
+              ${incPacienteSinCita.length} emitida${incPacienteSinCita.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          ${renderIncapacidadesHistorialHTML(incPacienteSinCita)}
+        </div>
+
+        <!-- NUEVA RECETA -->
+        <div class="pac-section">
+          <div class="pac-section-title">
+            <i class="fas fa-prescription-bottle"></i> Nueva receta médica
+            <button class="btn btn-outline btn-sm" style="margin-left:auto"
+              onclick="agregarMedicamento('sinCita_${p.id}')">
+              <i class="fas fa-plus"></i> Agregar medicamento
+            </button>
+          </div>
+          <div id="listaMedicamentos_sinCita_${p.id}" style="margin-bottom:10px"></div>
+          <div id="formReceta_sinCita_${p.id}" style="display:none;background:#EAF1FB;
+               border-radius:10px;padding:12px;border:1px solid #DCE6F5">
+            <div class="form-grid three">
+              <div class="form-group">
+                <label>Medicamento</label>
+                <input id="rM_sinCita_${p.id}" placeholder="Amoxicilina 500mg">
+              </div>
+              <div class="form-group">
+                <label>Dosis</label>
+                <input id="rD_sinCita_${p.id}" placeholder="1 tableta">
+              </div>
+              <div class="form-group">
+                <label>Frecuencia</label>
+                <input id="rF_sinCita_${p.id}" placeholder="Cada 8 horas">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-teal btn-sm"
+              id="btnConfirmarMed_${p.id}"
+              onclick="gReceta('sinCita_${p.id}')">
+              <i class="fas fa-check"></i> Confirmar
+              </button>
+              <button class="btn btn-outline btn-sm"
+                onclick="cancelarMedicamento('sinCita_${p.id}')">
+                Cancelar
+              </button>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn btn-teal btn-sm"
+              onclick="prtReceta('sinCita_${p.id}')">
+              <i class="fas fa-print"></i> Imprimir receta
+            </button>
+          </div>
+        </div>
+
+        <!-- ══ CERTIFICADO DE INCAPACIDAD (sin cita) ══ -->
+        <div class="pac-section">
+          <div class="pac-section-title">
+            <i class="fas fa-file-medical-alt"></i> Certificado de Incapacidad
+            <button class="btn btn-outline btn-sm" style="margin-left:auto;color:#92400e;border-color:#fed7aa"
+              onclick="toggleIncapacidadForm('sinCita_${p.id}')">
+              <i class="fas fa-plus"></i> Emitir certificado
+            </button>
+          </div>
+          <div id="listaIncapacidades_sinCita_${p.id}" style="margin-bottom:8px"></div>
+          <div id="formIncapacidad_sinCita_${p.id}" style="display:none;background:#fffbeb;border-radius:10px;padding:14px;border:1.5px solid #fde68a;margin-top:8px">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Tipo de incapacidad</label>
+                <select id="incTipoP_sinCita_${p.id}">
+                  <option value="Enfermedad común">Enfermedad común</option>
+                  <option value="Accidente de trabajo">Accidente de trabajo</option>
+                  <option value="Accidente no laboral">Accidente no laboral</option>
+                  <option value="Maternidad">Maternidad</option>
+                  <option value="Enfermedad profesional">Enfermedad profesional</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Días de reposo *</label>
+                <input type="number" id="incDiasP_sinCita_${p.id}" min="1" placeholder="3"
+                  oninput="calcIncFechaFin('incDiasP_sinCita_${p.id}','incInicioP_sinCita_${p.id}','incFinP_sinCita_${p.id}')"
+                  onchange="calcIncFechaFin('incDiasP_sinCita_${p.id}','incInicioP_sinCita_${p.id}','incFinP_sinCita_${p.id}')">
+              </div>
+              <div class="form-group">
+                <label>Fecha inicio *</label>
+                <input type="date" id="incInicioP_sinCita_${p.id}" value="${hoy}"
+                  oninput="calcIncFechaFin('incDiasP_sinCita_${p.id}','incInicioP_sinCita_${p.id}','incFinP_sinCita_${p.id}')"
+                  onchange="calcIncFechaFin('incDiasP_sinCita_${p.id}','incInicioP_sinCita_${p.id}','incFinP_sinCita_${p.id}')">
+              </div>
+              <div class="form-group">
+                <label>Fecha fin reposo</label>
+                <input type="date" id="incFinP_sinCita_${p.id}"
+                  placeholder="Se calcula al ingresar días"
+                  title="Se calcula automáticamente. Puedes modificarla manualmente.">
+              </div>
+              <div class="form-group">
+                <label>Diagnóstico *</label>
+                <input id="incDiagP_sinCita_${p.id}" placeholder="Diagnóstico médico...">
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:12px">
+              <label>Observaciones / indicaciones</label>
+              <input id="incObsP_sinCita_${p.id}" placeholder="Restricciones, seguimiento...">
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm" id="btnIncP_sinCita_${p.id}"
+                style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer"
+                onclick="emitirIncapacidadPanel('sinCita_${p.id}')">
+                <i class="fas fa-file-medical"></i> Emitir e imprimir
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="toggleIncapacidadForm('sinCita_${p.id}')">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+
+  const h3 = document.querySelector('#mainContent h3');
+  if (h3) h3.parentNode.insertBefore(contenedor, h3);
+
+  if (!pacientes.find(p2 => p2.id === pacId)) pacientes.push(p);
+  if (hc) hc.forEach(h => {
+    if (!historialClinico.find(x => x.id === h.id)) historialClinico.unshift(h);
+  });
+}
+
+function calcularEdad(fechaNac) {
+  if (!fechaNac) return '—';
+  const hoy = new Date();
+  const nac = new Date(fechaNac);
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const m = hoy.getMonth() - nac.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+  return edad;
+}
+
+function togPac(id) {
+  const el = document.getElementById('pac_' + id);
+  if (!el) return;
+
+  const estaAbierto = el.classList.contains('open');
+
+  if (estaAbierto) {
+    el.classList.remove('open');
+    return;
+  }
+
+  if (pacienteEnAtencion && pacienteEnAtencion !== id) {
+    const pac = getPac(pacienteEnAtencion);
+    showToast(`⚠️ Guarde la consulta de ${pac?.nombre_completo || 'el paciente anterior'} antes de continuar`);
+
+    const btnGuardar = document.getElementById('btnGuardar_' + pacienteEnAtencion);
+    if (btnGuardar) {
+      btnGuardar.style.animation = 'pulse-btn 0.5s ease 3';
+      btnGuardar.style.background = '#f43f5e';
+      btnGuardar.style.color = '#fff';
+      setTimeout(() => {
+        btnGuardar.style.animation = '';
+        btnGuardar.style.background = '';
+        btnGuardar.style.color = '';
+      }, 2000);
+    }
+    return;
+  }
+
+  el.classList.add('open');
+  pacienteEnAtencion = id;
+}
+
+// ── EXÁMENES ─────────────────────────────────────────────
+function agregarExamen(pacId) {
+  const form = document.getElementById('formExamen_' + pacId);
+  if (form) form.style.display = 'block';
+  const sel = document.getElementById('exT_' + pacId);
+  if (sel) {
+    sel.onchange = () => {
+      const wrap = document.getElementById('exOtroWrap_' + pacId);
+      if (wrap) wrap.style.display = sel.value === 'Otro' ? 'block' : 'none';
+    };
+  }
+}
+
+function cancelarExamen(pacId) {
+  const form = document.getElementById('formExamen_' + pacId);
+  if (form) form.style.display = 'none';
+  const sel = document.getElementById('exT_' + pacId);
+  if (sel) sel.value = '';
+}
+
+async function gExamen(pacId) {
+  const sel   = document.getElementById('exT_' + pacId);
+  const fecha = document.getElementById('exF_' + pacId)?.value || hoy;
+  const otro  = document.getElementById('exOtro_' + pacId)?.value?.trim();
+  let tipo    = sel?.value;
+
+  if (!tipo) { showFieldError('exT_' + pacId, 'Selecciona el tipo de examen'); return; }
+  if (tipo === 'Otro') {
+    if (!otro) { showFieldError('exOtro_' + pacId, 'Especifica el nombre del examen'); return; }
+    tipo = otro;
+  }
+
+  const btnEx = document.querySelector(`[onclick="gExamen('${pacId}')"]`);
+  if (btnEx) { btnEx.disabled = true; btnEx.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+  const { data, error } = await db.from('examenes').insert([{
+    clinica_id:  CLINICA_ID,
+    paciente_id: pacId,
+    medico_id:   medicoActual?.id,
+    tipo,
+    fecha,
+    resultado:   'Pendiente'
+  }]).select().single();
+
+  if (error) {
+    showToast('❌ ' + translateError(error));
+    if (btnEx) { btnEx.disabled = false; btnEx.innerHTML = '<i class="fas fa-check"></i> Confirmar'; }
+    return;
+  }
+
+  if (!examenesTemp[pacId]) examenesTemp[pacId] = [];
+  examenesTemp[pacId].push(data);
+  renderListaExamenes(pacId);
+  cancelarExamen(pacId);
+  showToast(`✅ Examen "${tipo}" agregado`);
+}
+
+function renderListaExamenes(pacId) {
+  const lista = document.getElementById('listaExamenes_' + pacId);
+  if (!lista) return;
+  const items = examenesTemp[pacId] || [];
+  if (!items.length) { lista.innerHTML = ''; return; }
+  lista.innerHTML = `
+    <div style="font-size:.65rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+      Exámenes solicitados en esta consulta
+    </div>
+    ${items.map((e,i) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:8px 12px;background:#EAF1FB;border-radius:8px;
+                  margin-bottom:6px;border:1px solid #DCE6F5">
+        <div>
+          <div style="font-size:.78rem;font-weight:600;color:var(--text)">🧪 ${e.tipo}</div>
+          <div style="font-size:.65rem;color:#64748b">Fecha: ${e.fecha || hoy}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="background:#fef9c3;color:#d97706;padding:3px 10px;border-radius:20px;font-size:.63rem;font-weight:700">⏳ Pendiente</span>
+          <button onclick="quitarExamen('${pacId}',${i})"
+            style="background:rgba(244,63,94,.1);color:#f43f5e;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.72rem">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>`).join('')}`;
+}
+
+async function quitarExamen(pacId, index) {
+  const items = examenesTemp[pacId] || [];
+  const exam  = items[index];
+  if (!exam) return;
+  const { error } = await db.from('examenes').delete().eq('id', exam.id);
+  if (error) { showToast('❌ ' + translateError(error)); return; }
+  examenesTemp[pacId].splice(index, 1);
+  renderListaExamenes(pacId);
+  showToast('✅ Examen eliminado');
+}
+
+// ── RECETA ────────────────────────────────────────────────
+function agregarMedicamento(pid) {
+  const form = document.getElementById('formReceta_' + pid);
+  if (form) form.style.display = 'block';
+  const inp = document.getElementById('rM_' + pid);
+  if (inp) inp.focus();
+}
+
+function cancelarMedicamento(pid) {
+  const form = document.getElementById('formReceta_' + pid);
+  if (form) form.style.display = 'none';
+
+  const rM = document.getElementById('rM_' + pid);
+  const rD = document.getElementById('rD_' + pid);
+  const rF = document.getElementById('rF_' + pid);
+  if (rM) rM.value = '';
+  if (rD) rD.value = '';
+  if (rF) rF.value = '';
+
+  const pacienteId = pid.startsWith('sinCita_')
+    ? pid.replace('sinCita_', '')
+    : pid;
+  const btn = document.getElementById('btnConfirmarMed_' + pacienteId);
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check"></i> Confirmar';
+  }
+}
+
+async function gReceta(pid) {
+  const pacienteId = pid.startsWith('sinCita_')
+    ? pid.replace('sinCita_', '')
+    : pid;
+
+  const btnId = `btnConfirmarMed_${pacienteId}`;
+  const btn   = document.getElementById(btnId);
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
+
+  const med   = document.getElementById('rM_' + pid)?.value.trim();
+  const dosis = document.getElementById('rD_' + pid)?.value.trim();
+  const frec  = document.getElementById('rF_' + pid)?.value.trim();
+
+  if (!med) {
+    showFieldError('rM_' + pid, 'Ingresa el nombre del medicamento');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Confirmar'; }
+    return;
+  }
+
+  const { data, error } = await db.from('recetas').insert([{
+    clinica_id:  CLINICA_ID,
+    paciente_id: pacienteId,
+    medico_id:   medicoActual?.id,
+    medicamento: med,
+    dosis:       dosis || '—',
+    frecuencia:  frec  || '—',
+    fecha:       hoy
+  }]).select().single();
+
+  if (error) {
+    showToast('❌ ' + translateError(error));
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Confirmar'; }
+    return;
+  }
+
+  if (!medicamentosTemp[pid]) medicamentosTemp[pid] = [];
+  medicamentosTemp[pid].push(data);
+  auditLog('recetas', 'INSERT', data.id, `Receta: ${med} — ${getPac(pid)?.nombre_completo || 'Paciente ' + pid}`, { medicamento: med, dosis: dosis || '—', frecuencia: frec || '—', paciente_id: pid });
+  recetas.push(data);
+
+  renderListaMedicamentos(pid);
+  cancelarMedicamento(pid);
+  showToast(`✅ ${med} agregado a la receta`);
+}
+
+function renderListaMedicamentos(pid) {
+  const lista = document.getElementById('listaMedicamentos_' + pid);
+  if (!lista) return;
+  const items = medicamentosTemp[pid] || [];
+  if (!items.length) { lista.innerHTML = ''; return; }
+
+  lista.innerHTML = `
+    <div style="font-size:.65rem;font-weight:700;color:var(--teal);
+                text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+      Medicamentos en esta receta
+    </div>
+    ${items.map((r,i) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:8px 12px;background:#EAF1FB;border-radius:8px;
+                  margin-bottom:6px;border:1px solid #DCE6F5">
+        <div>
+          <div style="font-size:.78rem;font-weight:600;color:var(--text)">
+            💊 ${r.medicamento}
+          </div>
+          <div style="font-size:.65rem;color:#64748b">
+            ${r.dosis} · ${r.frecuencia}
+          </div>
+        </div>
+        <button onclick="quitarMedicamento('${pid}',${i})"
+          style="background:rgba(244,63,94,.1);color:#f43f5e;border:none;
+                 border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.72rem">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>`).join('')}`;
+}
+
+async function quitarMedicamento(pid, index) {
+  const items = medicamentosTemp[pid] || [];
+  const med   = items[index];
+  if (!med) return;
+  const { error } = await db.from('recetas').delete().eq('id', med.id);
+  if (error) { showToast('❌ ' + translateError(error)); return; }
+  auditLog('recetas', 'DELETE', med.id, `Medicamento eliminado: ${med.medicamento} — Paciente ${pid}`, { medicamento: med.medicamento, paciente_id: pid });
+  medicamentosTemp[pid].splice(index, 1);
+  recetas = recetas.filter(r => r.id !== med.id);
+  renderListaMedicamentos(pid);
+  showToast('✅ Medicamento eliminado');
+}
+
+// ── IMPRIMIR ORDEN DE EXÁMENES ────────────────────────────
+async function prtOrdenExamenes(pid) {
+  const p     = getPac(pid);
+  const m     = medicoActual;
+  const items = examenesTemp[pid] || [];
+
+  if (!items.length) { showToast('⚠️ No hay exámenes solicitados'); return; }
+
+  const { data: clinica } = await db
+    .from('clinicas').select('nombre, ruc, telefono')
+    .eq('id', CLINICA_ID).single();
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Orden de Exámenes</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:'DM Sans',sans-serif;padding:40px;max-width:520px;margin:0 auto;color:#123D74}
+    .encabezado{text-align:center;margin-bottom:20px}
+    .logo{font-size:2rem;margin-bottom:6px}
+    .clinica-nombre{font-size:1.1rem;font-weight:700;color:#1A56A0;margin-bottom:4px}
+    .clinica-dato{font-size:.75rem;color:#64748b;margin-bottom:3px}
+    hr{border:none;border-top:2px solid #DCE6F5;margin:16px 0}
+    .dato{font-size:.85rem;margin-bottom:6px}
+    .dato strong{color:#123D74}
+    .examen{background:#EAF1FB;border:1px solid #DCE6F5;border-radius:8px;
+            padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+    .examen-num{width:26px;height:26px;border-radius:50%;background:var(--teal);
+                color:#fff;font-size:.75rem;font-weight:700;
+                display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .examen-nombre{font-weight:600;font-size:.88rem}
+    .examen-fecha{font-size:.72rem;color:#64748b;margin-top:2px}
+    .titulo-sec{font-size:.72rem;color:#1A56A0;text-transform:uppercase;
+                letter-spacing:.05em;font-weight:700;margin-bottom:10px}
+    .firma{margin-top:40px;border-top:1px solid #DCE6F5;padding-top:14px;font-size:.78rem}
+    :root{--teal:#1A56A0}
+  </style></head><body>
+
+  <!-- ENCABEZADO CLÍNICA -->
+  <div class="encabezado">
+    <div class="logo">🏥</div>
+    <div class="clinica-nombre">${clinica?.nombre || 'SyscobfactCLINIC'}</div>
+    <div class="clinica-dato">RUC: ${clinica?.ruc||'—'} | DV: ${clinica?.dv||'—'}</div>
+    <div class="clinica-dato">Tel: ${clinica?.telefono||'—'}</div>
+  </div>
+  <hr>
+
+  <!-- TÍTULO -->
+  <p style="text-align:center;font-size:.95rem;font-weight:700;color:#1A56A0;margin-bottom:16px">
+    ORDEN DE EXÁMENES MÉDICOS
+  </p>
+
+  <!-- DATOS DEL PACIENTE -->
+  <div class="titulo-sec">Datos del paciente</div>
+  <div class="dato"><strong>Paciente:</strong> ${p?.nombre_completo||'—'}</div>
+  <div class="dato"><strong>Cédula / SS:</strong> ${p?.cedula||'—'}</div>
+  <div class="dato"><strong>Edad:</strong> ${calcularEdad(p?.fecha_nacimiento)} años</div>
+  <div class="dato"><strong>Seguro médico:</strong> ${p?.seguro_medico||'—'}</div>
+  <div class="dato"><strong>Médico tratante:</strong> ${m?.nombre_completo||currentUser.name}</div>
+  <div class="dato"><strong>Especialidad:</strong> ${m?.especialidad||'—'}</div>
+  <div class="dato"><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-PA',{day:'2-digit',month:'long',year:'numeric'})}</div>
+  <hr>
+
+  <!-- EXÁMENES SOLICITADOS -->
+  <div class="titulo-sec">Exámenes solicitados</div>
+  ${items.map((e,i) => `
+    <div class="examen">
+      <div class="examen-num">${i+1}</div>
+      <div>
+        <div class="examen-nombre">${e.tipo}</div>
+        <div class="examen-fecha">Fecha indicada: ${e.fecha || hoy}</div>
+      </div>
+    </div>`).join('')}
+
+  <!-- INSTRUCCIONES -->
+  <div style="margin-top:16px;background:#fef9c3;border:1px solid #fde68a;
+              border-radius:8px;padding:12px 14px;font-size:.75rem;color:#92400e">
+    <strong>📋 Instrucciones:</strong> Presentar esta orden en el laboratorio.
+    Los resultados deben ser entregados al médico tratante para su evaluación.
+  </div>
+
+  <!-- FIRMA -->
+  <div class="firma">
+    <strong>${m?.nombre_completo||currentUser.name}</strong><br>
+    <span style="color:#64748b">${m?.especialidad||'Médico'}</span><br>
+    <span style="color:#94a3b8;font-size:.72rem">Firma: ___________________________</span>
+  </div>
+
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 600);
+}
+
+// ── IMPRIMIR RECETA ───────────────────────────────────────
+async function prtReceta(pid) {
+  const pacienteId = pid.startsWith('sinCita_')
+    ? pid.replace('sinCita_', '')
+    : pid;
+
+  const p    = getPac(pacienteId);
+  const m    = medicoActual;
+  const meds = medicamentosTemp[pid] || recetas.filter(r => r.paciente_id === pacienteId);
+
+  if (!meds.length) { showToast('⚠️ No hay medicamentos en la receta'); return; }
+
+  const { data: clinica } = await db
+    .from('clinicas').select('nombre, ruc, telefono')
+    .eq('id', CLINICA_ID).single();
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Receta Médica</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:'DM Sans',sans-serif;padding:40px;max-width:520px;margin:0 auto;color:#123D74}
+    .encabezado{text-align:center;margin-bottom:20px}
+    .logo{font-size:2rem;margin-bottom:6px}
+    .clinica-nombre{font-size:1.1rem;font-weight:700;color:#1A56A0;margin-bottom:4px}
+    .clinica-dato{font-size:.75rem;color:#64748b;margin-bottom:3px}
+    hr{border:none;border-top:2px solid #DCE6F5;margin:16px 0}
+    .dato{font-size:.85rem;margin-bottom:6px}
+    .dato strong{color:#123D74}
+    .med{background:#EAF1FB;border:1px solid #DCE6F5;border-radius:8px;
+         padding:10px 14px;margin-bottom:8px}
+    .med-name{font-weight:700;font-size:.9rem}
+    .med-info{font-size:.78rem;color:#64748b;margin-top:2px}
+    .firma{margin-top:40px;border-top:1px solid #DCE6F5;padding-top:14px;font-size:.78rem}
+    .titulo-sec{font-size:.72rem;color:#1A56A0;text-transform:uppercase;
+                letter-spacing:.05em;font-weight:700;margin-bottom:10px}
+  </style></head><body>
+
+  <!-- ENCABEZADO CLÍNICA -->
+  <div class="encabezado">
+    <div class="logo">🏥</div>
+    <div class="clinica-nombre">${clinica?.nombre || 'SyscobfactCLINIC'}</div>
+    <div class="clinica-dato">RUC: ${clinica?.ruc||'—'} | DV: ${clinica?.dv||'—'}</div>
+    <div class="clinica-dato">Tel: ${clinica?.telefono||'—'}</div>
+  </div>
+  <hr>
+
+  <!-- DATOS DEL PACIENTE -->
+  <div class="titulo-sec">Datos del paciente</div>
+  <div class="dato"><strong>Paciente:</strong> ${p?.nombre_completo||'—'}</div>
+  <div class="dato"><strong>Cédula / SS:</strong> ${p?.cedula||'—'}</div>
+  <div class="dato"><strong>Edad:</strong> ${calcularEdad(p?.fecha_nacimiento)} años</div>
+  <div class="dato"><strong>Tipo de sangre:</strong> ${p?.tipo_sangre||'—'}</div>
+  <div class="dato"><strong>Alergias:</strong> ${p?.alergias||'Ninguna'}</div>
+  <div class="dato"><strong>Médico tratante:</strong> ${m?.nombre_completo||currentUser.name}</div>
+  <div class="dato"><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-PA',{day:'2-digit',month:'long',year:'numeric'})}</div>
+  <hr>
+
+  <!-- MEDICAMENTOS -->
+  <div class="titulo-sec">Medicamentos indicados</div>
+  ${meds.map((r,i) => `
+    <div class="med">
+      <div class="med-name">${i+1}. ${r.medicamento}</div>
+      <div class="med-info">
+        <strong>Dosis:</strong> ${r.dosis||'—'} &nbsp;·&nbsp;
+        <strong>Frecuencia:</strong> ${r.frecuencia||'—'}
+      </div>
+    </div>`).join('')}
+
+  <!-- FIRMA -->
+  <div class="firma">
+    <strong>${m?.nombre_completo||currentUser.name}</strong><br>
+    <span style="color:#64748b">${m?.especialidad||'Médico'}</span><br>
+    <span style="color:#94a3b8;font-size:.72rem">Firma: ___________________________</span>
+  </div>
+
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 600);
+}
+
+// ── GUARDAR CONSULTA COMPLETA ─────────────────────────────
+async function gConsulta(pid) {
+  const btnGuardar = document.getElementById('btnGuardar_' + pid);
+  if (btnGuardar) {
+    btnGuardar.disabled = true;
+    btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  }
+
+  const diag  = document.getElementById('diag_' + pid)?.value;
+  const trat  = document.getElementById('trat_' + pid)?.value;
+  const obs   = document.getElementById('obs_'  + pid)?.value;
+  const sint  = document.getElementById('sint_' + pid)?.value;
+  const peso  = document.getElementById('peso_' + pid)?.value;
+  const est   = document.getElementById('est_'  + pid)?.value;
+  const pres  = document.getElementById('pres_' + pid)?.value;
+  const temp  = document.getElementById('temp_' + pid)?.value;
+
+  if (!diag) {
+    showFieldError('diag_' + pid, 'El diagnóstico es obligatorio antes de guardar');
+    if (btnGuardar) {
+      btnGuardar.disabled = false;
+      btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar consulta completa';
+    }
+    return;
+  }
+
+  const { data, error } = await db.from('historial_clinico').insert([{
+    clinica_id:    CLINICA_ID,
+    paciente_id:   pid,
+    medico_id:     medicoActual?.id,
+    fecha:         hoy,
+    peso:          peso  || null,
+    estatura:      est   || null,
+    presion:       pres  || null,
+    temperatura:   temp  || null,
+    sintomas:      sint  || null,
+    diagnostico:   diag,
+    tratamiento:   trat  || null,
+    observaciones: obs   || null,
+  }]).select().single();
+
+  if (error) {
+    showToast('❌ ' + translateError(error));
+    if (btnGuardar) {
+      btnGuardar.disabled = false;
+      btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar consulta completa';
+    }
+    return;
+  }
+
+  auditLog('historial_clinico', 'INSERT', data.id, `Consulta: ${getPac(pid)?.nombre_completo} — ${diag}`, { paciente_id: pid, diagnostico: diag, tratamiento: trat });
+  historialClinico.unshift(data);
+  examenesTemp[pid]     = [];
+  medicamentosTemp[pid] = [];
+
+  // Marcar cita como atendida
+  const citaHoy = citas.find(c =>
+    c.paciente_id === pid &&
+    c.fecha       === hoy &&
+    c.medico_id   === medicoActual?.id &&
+    c.estado      === 'confirmada'
+  );
+
+  if (citaHoy) {
+    await db.from('citas').update({
+      estado:         'atendida',
+      fecha_atencion: new Date().toISOString()
+    }).eq('id', citaHoy.id);
+
+    citaHoy.estado         = 'atendida';
+    citaHoy.fecha_atencion = new Date().toISOString();
+    auditLog('citas', 'UPDATE', citaHoy.id, `Cita atendida: ${getPac(pid)?.nombre_completo}`, { estado: 'atendida', paciente_id: pid });
+  }
+
+  pacienteEnAtencion = null;
+  showToast('✅ Consulta guardada — Paciente marcado como Atendido ✅');
+  renderMedicoPanel();
+}
+
+// ── VOZ ───────────────────────────────────────────────────
+function voz(id) {
+  if (!('webkitSpeechRecognition' in window)) {
+    showToast('⚠️ Usa Google Chrome para el reconocimiento de voz');
+    return;
+  }
+  const r  = new webkitSpeechRecognition();
+  r.lang   = 'es-PA';
+  r.onresult = (e) => {
+    const el = document.getElementById(id);
+    if (el) el.value = e.results[0][0].transcript;
+    showToast('🎤 Texto capturado');
+  };
+  r.onerror = () => showToast('❌ Error en el micrófono');
+  r.start();
+  showToast('🎤 Escuchando...');
+}
+
+// ── HELPERS DE FECHAS ─────────────────────────────────────
+function calcFechaFin(fechaInicio, dias) {
+  const d = new Date(fechaInicio + 'T12:00:00');
+  d.setDate(d.getDate() + dias - 1);
+  return d.toISOString().split('T')[0];
+}
+
+function calcIncFechaFin(diasId, inicioId, finId) {
+  const dias = parseInt(document.getElementById(diasId)?.value);
+  const inicio = document.getElementById(inicioId)?.value;
+  const finEl = document.getElementById(finId);
+  if (!finEl) return;
+  if (dias > 0 && inicio) {
+    finEl.value = calcFechaFin(inicio, dias);
+  }
+}
+
+// ── IMPRIMIR CERTIFICADO ──────────────────────────────────
+async function imprimirIncapacidad(id) {
+  const inc = incapacidades.find(x => x.id === id);
+  if (!inc) { showToast('⚠️ Certificado no encontrado'); return; }
+
+  const { data: clinica } = await db
+    .from('clinicas').select('nombre, ruc, telefono')
+    .eq('id', CLINICA_ID).single();
+
+  const p = getPac(inc.paciente_id);
+  const m = getMed(inc.medico_id);
+  const nombreMed = m?.nombre_completo || inc.medico_nombre || '—';
+  const espMed    = m?.especialidad || 'Médico';
+
+  const fmtFecha = d => new Date(d + 'T12:00:00').toLocaleDateString('es-PA', {day:'2-digit',month:'long',year:'numeric'});
+
+  const html = `<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="UTF-8">
+<title>Certificado de Incapacidad ${inc.numero}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;padding:36px 40px;max-width:620px;margin:0 auto;color:#123D74;font-size:13px;line-height:1.5}
+  .header{text-align:center;padding-bottom:18px;border-bottom:2.5px solid #1A56A0;margin-bottom:18px}
+  .header .logo{font-size:2.2rem;margin-bottom:6px}
+  .header .nombre{font-size:1.05rem;font-weight:700;color:#1A56A0;margin-bottom:3px}
+  .header .dato{font-size:.72rem;color:#64748b;margin-bottom:2px}
+  .titulo-cert{text-align:center;margin:18px 0 20px}
+  .titulo-cert h2{font-size:.95rem;font-weight:700;color:#1A56A0;text-transform:uppercase;letter-spacing:.1em;padding:10px 20px;border:2.5px solid #1A56A0;border-radius:8px;display:inline-block}
+  .titulo-cert .num-emision{font-size:.72rem;color:#64748b;margin-top:7px}
+  .bloque{background:#EAF1FB;border:1px solid #DCE6F5;border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  .bloque-titulo{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#1A56A0;margin-bottom:10px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+  .campo .lbl{font-size:.65rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+  .campo .val{font-size:.84rem;font-weight:600;color:#123D74}
+  .reposo-hero{background:linear-gradient(135deg,#1A56A0 0%,#123D74 100%);color:#fff;border-radius:12px;padding:20px;text-align:center;margin:18px 0}
+  .reposo-hero .dias-num{font-size:3rem;font-weight:700;line-height:1;margin-bottom:4px}
+  .reposo-hero .dias-lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;opacity:.85;margin-bottom:10px}
+  .reposo-hero .fechas{font-size:.85rem;font-weight:600;opacity:.95;background:rgba(255,255,255,.15);padding:7px 16px;border-radius:20px;display:inline-block}
+  .diag-bloque{background:#fffbeb;border-left:4px solid #f59e0b;padding:13px 16px;border-radius:0 10px 10px 0;margin-bottom:14px}
+  .diag-bloque .titulo{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#d97706;margin-bottom:6px}
+  .diag-bloque .texto{font-size:.88rem;font-weight:600;color:#92400e}
+  .obs-bloque{background:#EAF1FB;border-left:4px solid #1A56A0;padding:13px 16px;border-radius:0 10px 10px 0;margin-bottom:20px;font-size:.82rem;color:#123D74}
+  .firmas{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:36px;padding-top:0}
+  .firma-box{text-align:center}
+  .firma-linea{border-top:1.5px solid #1A56A0;padding-top:10px;margin-top:40px}
+  .firma-nombre{font-weight:700;color:#123D74;font-size:.88rem}
+  .firma-sub{font-size:.7rem;color:#64748b;margin-top:3px}
+  .lugar-fecha{text-align:center;font-size:.78rem;color:#64748b;margin-top:20px;padding-top:16px;border-top:1px dashed #DCE6F5}
+  .footer-cert{text-align:center;font-size:.62rem;color:#94a3b8;margin-top:20px;padding-top:12px;border-top:1px solid #DCE6F5}
+  @media print{body{padding:16px 20px} @page{margin:10mm}}
+</style>
+</head><body>
+
+<div class="header">
+  <div class="logo">🏥</div>
+  <div class="nombre">${clinica?.nombre || 'SyscobfactCLINIC'}</div>
+  <div class="dato">RUC: ${clinica?.ruc || '—'} &nbsp;|&nbsp; DV: ${clinica?.dv || '—'}</div>
+  <div class="dato">Teléfono: ${clinica?.telefono || '—'}</div>
+</div>
+
+<div class="titulo-cert">
+  <h2>Certificado Médico de Incapacidad</h2>
+  <div class="num-emision">
+    N° <strong style="color:#1A56A0">${inc.numero}</strong>
+    &nbsp;&bull;&nbsp;
+    Emisión: ${fmtFecha(inc.fecha_emision)}
+    &nbsp;&bull;&nbsp;
+    Tipo: ${inc.tipo}
+  </div>
+</div>
+
+<!-- DATOS PACIENTE -->
+<div class="bloque">
+  <div class="bloque-titulo">Datos del paciente</div>
+  <div class="grid2">
+    <div class="campo"><div class="lbl">Nombre completo</div><div class="val">${p?.nombre_completo || '—'}</div></div>
+    <div class="campo"><div class="lbl">Cédula de identidad</div><div class="val">${p?.cedula || '—'}</div></div>
+    <div class="campo"><div class="lbl">Edad</div><div class="val">${p ? calcularEdad(p.fecha_nacimiento) + ' años' : '—'}</div></div>
+    <div class="campo"><div class="lbl">Seguro médico</div><div class="val">${p?.seguro_medico || '—'}</div></div>
+  </div>
+</div>
+
+<!-- REPOSO -->
+<div class="reposo-hero">
+  <div class="dias-num">${inc.dias_reposo}</div>
+  <div class="dias-lbl">día${inc.dias_reposo !== 1 ? 's' : ''} de reposo médico</div>
+  <div class="fechas">Del ${fmtFecha(inc.fecha_inicio)} al ${fmtFecha(inc.fecha_fin)}</div>
+</div>
+
+<!-- DIAGNÓSTICO -->
+<div class="diag-bloque">
+  <div class="titulo">Diagnóstico médico</div>
+  <div class="texto">${inc.diagnostico}</div>
+</div>
+
+${inc.observaciones ? `
+<!-- OBSERVACIONES -->
+<div class="obs-bloque">
+  <strong style="font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:#1A56A0;display:block;margin-bottom:4px">Observaciones / indicaciones</strong>
+  ${inc.observaciones}
+</div>` : ''}
+
+<!-- FIRMAS -->
+<div class="firmas">
+  <div class="firma-box">
+    <div class="firma-linea">
+      <div class="firma-nombre">${nombreMed}</div>
+      <div class="firma-sub">${espMed}</div>
+      <div class="firma-sub" style="color:#1A56A0;font-weight:600;margin-top:2px">Médico certificador</div>
+    </div>
+  </div>
+  <div class="firma-box">
+    <div class="firma-linea">
+      <div class="firma-nombre">${p?.nombre_completo || '—'}</div>
+      <div class="firma-sub">Paciente</div>
+      <div class="firma-sub" style="margin-top:2px">Cédula: ${p?.cedula || '—'}</div>
+    </div>
+  </div>
+</div>
+
+<div class="lugar-fecha">
+  Ciudad de Panamá, República de Panamá — ${fmtFecha(inc.fecha_emision)}
+</div>
+
+<div class="footer-cert">
+  Documento generado por SyscobfactMED &bull; ${clinica?.nombre || 'SyscobfactCLINIC'} &bull; ${inc.numero}
+</div>
+
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { showToast('⚠️ Habilita ventanas emergentes para imprimir'); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 700);
+}
+
+// ── PANEL MÉDICO — emitir desde consulta ─────────────────
+function toggleIncapacidadForm(pid) {
+  const form = document.getElementById('formIncapacidad_' + pid);
+  if (!form) return;
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function emitirIncapacidadPanel(pid) {
+  const pacienteId = pid.startsWith('sinCita_') ? pid.replace('sinCita_', '') : pid;
+
+  if (!validate([
+    { id: 'incDiasP_'   + pid, rules: [V.req, V.posNum] },
+    { id: 'incInicioP_' + pid, rules: [V.req] },
+    { id: 'incDiagP_'   + pid, rules: [V.req] },
+  ])) return;
+
+  const btn = document.getElementById('btnIncP_' + pid);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; }
+
+  const tipo        = document.getElementById('incTipoP_'   + pid)?.value || 'Enfermedad común';
+  const dias        = parseInt(document.getElementById('incDiasP_'   + pid).value);
+  const fechaInicio = document.getElementById('incInicioP_' + pid).value;
+  const diag        = document.getElementById('incDiagP_'   + pid).value.trim();
+  const obs         = document.getElementById('incObsP_'    + pid)?.value.trim() || null;
+  const numero      = 'INC-' + String(incapacidades.length + 1).padStart(4, '0');
+  const fechaFin    = document.getElementById('incFinP_' + pid)?.value || calcFechaFin(fechaInicio, dias);
+  const m           = medicoActual;
+
+  const { data, error } = await db.from('incapacidades').insert([{
+    clinica_id:    CLINICA_ID,
+    paciente_id:   pacienteId,
+    medico_id:     medicoActual?.id,
+    medico_nombre: m?.nombre_completo || currentUser.name || '—',
+    numero,
+    fecha_emision: fechaLocal(),
+    fecha_inicio:  fechaInicio,
+    fecha_fin:     fechaFin,
+    dias_reposo:   dias,
+    diagnostico:   diag,
+    tipo,
+    observaciones: obs,
+  }]).select().single();
+
+  if (error) {
+    showToast('❌ ' + translateError(error));
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-medical"></i> Emitir e imprimir'; }
+    return;
+  }
+
+  const p = getPac(pacienteId);
+  auditLog('incapacidades', 'INSERT', data.id,
+    `Certificado ${numero}: ${p?.nombre_completo} — ${dias} días`,
+    { paciente_id: pacienteId, medico_id: medicoActual?.id, dias_reposo: dias, tipo }
+  );
+  incapacidades.unshift(data);
+  showToast(`✅ Certificado ${numero} emitido — ${dias} días`);
+  renderIncapacidadesPanel(pid);
+  toggleIncapacidadForm(pid);
+  imprimirIncapacidad(data.id);
+}
+
+function renderIncapacidadesPanel(pid) {
+  const pacienteId = pid.startsWith('sinCita_') ? pid.replace('sinCita_', '') : pid;
+  const lista = document.getElementById('listaIncapacidades_' + pid);
+  if (!lista) return;
+  const items = incapacidades.filter(i =>
+    i.paciente_id === pacienteId && i.fecha_emision === hoy
+  );
+  if (!items.length) { lista.innerHTML = ''; return; }
+  lista.innerHTML = items.map(i => `
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:9px 12px;background:#fffbeb;border-radius:8px;
+                margin-bottom:6px;border:1px solid #fde68a">
+      <div>
+        <div style="font-size:.78rem;font-weight:600;color:#92400e">
+          📋 ${i.numero} — ${i.dias_reposo} día${i.dias_reposo !== 1 ? 's' : ''} · ${i.tipo}
+        </div>
+        <div style="font-size:.65rem;color:#64748b;margin-top:2px">
+          ${i.fecha_inicio} al ${i.fecha_fin} · ${i.diagnostico}
+        </div>
+      </div>
+      <button onclick="imprimirIncapacidad('${i.id}')"
+        style="background:#fff;color:#d97706;border:1px solid #fde68a;border-radius:6px;
+               padding:5px 10px;cursor:pointer;font-size:.7rem;font-weight:600;flex-shrink:0">
+        <i class="fas fa-print"></i> Reimprimir
+      </button>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// BOOT — sesión, ficha médica y carga inicial de datos
+// ════════════════════════════════════════════════════════════
+// El sidebar solo tiene 2 secciones: "Mis Pacientes" (renderMedicoPanel ya
+// incluye resumen + buscador + lista de pacientes) e "Incapacidades" (vista
+// propia, separada de la ficha de cada paciente: acá el médico ve TODO lo
+// que él mismo ha emitido y puede emitir uno nuevo sin depender de una
+// cita puntual).
+function mostrarSeccionMedico(id) {
+  document.getElementById('navMisPacientes').classList.toggle('active', id === 'pacientes');
+  document.getElementById('navIncapacidadesMedico').classList.toggle('active', id === 'incapacidades');
+  if (id === 'incapacidades') {
+    renderIncapacidadesMedico();
+  } else {
+    renderMedicoPanel();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// SECCIÓN PROPIA: INCAPACIDADES DEL MÉDICO
+// ════════════════════════════════════════════════════════════
+// Solo los certificados que ESTE médico emitió (medicoActual.id) — no los
+// de toda la clínica, eso quedó fuera del panel de administrador a
+// propósito (ver Dashboard/index.html): acá cada médico ve y emite los
+// suyos, con su propia identidad, sin elegir un médico de una lista.
+function renderIncapacidadesMedico() {
+  const mias       = incapacidades.filter(i => i.medico_id === medicoActual?.id);
+  const total      = mias.length;
+  const nextNum    = 'INC-' + String(incapacidades.length + 1).padStart(4, '0');
+  const diasTotal  = mias.reduce((s, i) => s + (i.dias_reposo || 0), 0);
+  const promDias   = total ? Math.round(diasTotal / total) : 0;
+  const hace7dias  = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const estaSemana = mias.filter(i => (i.fecha_emision || '') >= hace7dias).length;
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page-title">📋 Incapacidades</div>
+    <div class="page-sub">Certificados médicos de reposo emitidos por ${medicoActual?.nombre_completo || currentUser.name} — ${fechaLocal()}</div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card teal">
+        <div class="stat-icon"><i class="fas fa-file-medical-alt"></i></div>
+        <div class="stat-num">${total}</div>
+        <div class="stat-label">Emitidos por mí</div>
+      </div>
+      <div class="stat-card emerald">
+        <div class="stat-icon"><i class="fas fa-calendar-minus"></i></div>
+        <div class="stat-num">${promDias}</div>
+        <div class="stat-label">Promedio días</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-icon"><i class="fas fa-calendar-week"></i></div>
+        <div class="stat-num">${estaSemana}</div>
+        <div class="stat-label">Esta semana</div>
+      </div>
+    </div>
+
+    <!-- FORMULARIO EMITIR -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">
+        <span class="card-title">📋 Emitir nuevo certificado</span>
+        <span class="badge badge-amber" style="background:#fef9c3;color:#d97706">${nextNum}</span>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Paciente *</label>
+            <input list="incMedPacientesList" id="incMedPacBuscar" placeholder="Escribe el nombre o cédula..." oninput="incMedResolverPaciente()" autocomplete="off">
+            <datalist id="incMedPacientesList">
+              ${pacientes.map(p => `<option data-id="${p.id}" value="${p.nombre_completo}${p.cedula ? ' — ' + p.cedula : ''}">`).join('')}
+            </datalist>
+            <input type="hidden" id="incMedPacId">
+          </div>
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select id="incMedTipo">
+              <option value="Enfermedad común">Enfermedad común</option>
+              <option value="Accidente laboral">Accidente laboral</option>
+              <option value="Maternidad">Maternidad</option>
+              <option value="Paternidad">Paternidad</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Días de reposo *</label>
+            <input type="number" id="incMedDias" min="1" max="365" placeholder="3"
+              oninput="calcIncFechaFin('incMedDias','incMedFechaInicio','incMedFechaFin')"
+              onchange="calcIncFechaFin('incMedDias','incMedFechaInicio','incMedFechaFin')">
+          </div>
+          <div class="form-group">
+            <label>Fecha inicio *</label>
+            <input type="date" id="incMedFechaInicio" value="${fechaLocal()}"
+              oninput="calcIncFechaFin('incMedDias','incMedFechaInicio','incMedFechaFin')"
+              onchange="calcIncFechaFin('incMedDias','incMedFechaInicio','incMedFechaFin')">
+          </div>
+          <div class="form-group">
+            <label>Fecha fin</label>
+            <input type="date" id="incMedFechaFin" placeholder="Se calcula al ingresar días"
+              title="Se calcula automáticamente. Puedes modificarla manualmente.">
+          </div>
+          <div class="form-group">
+            <label>Diagnóstico *</label>
+            <input id="incMedDiag" placeholder="Diagnóstico médico o código CIE-10...">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>Observaciones / indicaciones al paciente</label>
+          <input id="incMedObs" placeholder="Restricciones, indicaciones de seguimiento...">
+        </div>
+        <button class="btn btn-teal" id="btnGuardarIncMed" onclick="guardarIncapacidadMedico()">
+          <i class="fas fa-file-medical-alt"></i> Emitir e imprimir
+        </button>
+      </div>
+    </div>
+
+    <!-- LISTADO -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📋 Mis certificados emitidos</span>
+        <span class="badge badge-teal">${total} total</span>
+      </div>
+      ${total === 0
+        ? `<div class="card-body" style="text-align:center;padding:40px;color:#94a3b8">
+             <i class="fas fa-file-medical-alt" style="font-size:2.5rem;margin-bottom:12px;display:block;color:#DCE6F5"></i>
+             <div style="font-weight:600;margin-bottom:4px">Todavía no emitiste ningún certificado</div>
+             <div style="font-size:.78rem">Usa el formulario de arriba para emitir el primero</div>
+           </div>`
+        : `<div class="table-wrap">
+             <table>
+               <thead>
+                 <tr>
+                   <th>N°</th><th>Paciente</th><th>Tipo</th><th>Diagnóstico</th>
+                   <th>Días</th><th>Inicio</th><th>Fin</th><th>Emitido</th><th></th>
+                 </tr>
+               </thead>
+               <tbody>
+                 ${mias.map(i => {
+                   const pac = getPac(i.paciente_id);
+                   return `<tr>
+                     <td><strong style="color:var(--teal);font-size:.8rem">${i.numero}</strong></td>
+                     <td>
+                       <div style="font-weight:600;color:var(--text);font-size:.82rem">${pac?.nombre_completo || '—'}</div>
+                       <div style="font-size:.65rem;color:#94a3b8">${pac?.cedula || ''}</div>
+                     </td>
+                     <td><span class="badge badge-sky" style="font-size:.62rem">${i.tipo || '—'}</span></td>
+                     <td style="font-size:.75rem;max-width:160px;color:#374151">${i.diagnostico || '—'}</td>
+                     <td style="text-align:center">
+                       <span class="badge badge-amber" style="background:#fef9c3;color:#d97706">${i.dias_reposo} día${i.dias_reposo !== 1 ? 's' : ''}</span>
+                     </td>
+                     <td style="font-size:.72rem;color:#64748b">${i.fecha_inicio || '—'}</td>
+                     <td style="font-size:.72rem;color:#64748b">${i.fecha_fin || '—'}</td>
+                     <td style="font-size:.65rem;color:#94a3b8">${i.fecha_emision || '—'}</td>
+                     <td>
+                       <button class="btn btn-outline btn-sm" onclick="imprimirIncapacidad('${i.id}')" title="Imprimir certificado">
+                         <i class="fas fa-print"></i>
+                       </button>
+                     </td>
+                   </tr>`;
+                 }).join('')}
+               </tbody>
+             </table>
+           </div>`
+      }
+    </div>`;
+}
+
+// El <input list=datalist> deja escribir libre — esto resuelve lo tipeado
+// contra `pacientes` (mismo texto que se renderizó en las <option>) y
+// guarda el id real en el campo oculto. Si no matchea nada todavía (usuario
+// sigue escribiendo), el campo oculto queda vacío y la validación de abajo
+// lo va a pedir de nuevo al enviar.
+function incMedResolverPaciente() {
+  const texto = document.getElementById('incMedPacBuscar').value;
+  const match = pacientes.find(p => `${p.nombre_completo}${p.cedula ? ' — ' + p.cedula : ''}` === texto);
+  document.getElementById('incMedPacId').value = match ? match.id : '';
+}
+
+async function guardarIncapacidadMedico() {
+  incMedResolverPaciente();
+
+  if (!validate([
+    { id: 'incMedPacBuscar',    rules: [v => document.getElementById('incMedPacId').value !== '' || 'Busca y selecciona un paciente de la lista'] },
+    { id: 'incMedDias',         rules: [V.req, V.posNum] },
+    { id: 'incMedFechaInicio',  rules: [V.req] },
+    { id: 'incMedDiag',         rules: [V.req] },
+  ])) return;
+
+  const btn = document.getElementById('btnGuardarIncMed');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; }
+
+  const pacId       = document.getElementById('incMedPacId').value;
+  const tipo        = document.getElementById('incMedTipo').value;
+  const dias        = parseInt(document.getElementById('incMedDias').value);
+  const fechaInicio = document.getElementById('incMedFechaInicio').value;
+  const diag        = document.getElementById('incMedDiag').value.trim();
+  const obs         = document.getElementById('incMedObs').value.trim() || null;
+  const numero      = 'INC-' + String(incapacidades.length + 1).padStart(4, '0');
+  const fechaFin    = document.getElementById('incMedFechaFin').value || calcFechaFin(fechaInicio, dias);
+
+  const { data, error } = await db.from('incapacidades').insert([{
+    clinica_id:    CLINICA_ID,
+    paciente_id:   pacId,
+    medico_id:     medicoActual?.id,
+    medico_nombre: medicoActual?.nombre_completo || currentUser.name || '—',
+    numero,
+    fecha_emision: fechaLocal(),
+    fecha_inicio:  fechaInicio,
+    fecha_fin:     fechaFin,
+    dias_reposo:   dias,
+    diagnostico:   diag,
+    tipo,
+    observaciones: obs,
+  }]).select().single();
+
+  if (error) {
+    showToast('❌ ' + translateError(error));
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-medical-alt"></i> Emitir e imprimir'; }
+    return;
+  }
+
+  const p = getPac(pacId);
+  auditLog('incapacidades', 'INSERT', data.id,
+    `Certificado ${numero}: ${p?.nombre_completo} — ${dias} días (${fechaInicio} al ${fechaFin})`,
+    { paciente_id: pacId, medico_id: medicoActual?.id, dias_reposo: dias, tipo }
+  );
+  incapacidades.unshift(data);
+  showToast(`✅ Certificado ${numero} emitido — ${dias} días de reposo`);
+  imprimirIncapacidad(data.id);
+  renderIncapacidadesMedico();
+}
+
+(async function bootSesion() {
+  // Claves con prefijo medico_ — propias de este archivo, nunca tocadas por
+  // Dashboard/index.html (que usa admin_*). Ver el comentario equivalente
+  // en Dashboard/index.html: antes ambos archivos compartían las mismas
+  // claves de localStorage (mismo bucket file://), así que loguearse en uno
+  // pisaba la sesión del otro si estaban abiertos al mismo tiempo.
+  const savedClinicaId = localStorage.getItem('medico_clinica_id');
+  const savedNombre    = localStorage.getItem('medico_nombre');
+  const savedEmail     = localStorage.getItem('medico_email');
+  const savedRol       = localStorage.getItem('medico_rol');
+  const tipoDashboard  = localStorage.getItem('medico_tipo');
+
+  const tipoDashboardValido = !tipoDashboard || tipoDashboard === 'medico';
+
+  if (!(savedClinicaId && savedNombre && savedEmail && savedRol) || savedRol !== 'medico' || !tipoDashboardValido) {
+    window.location.replace('../Login/index.html');
+    return;
+  }
+
+  localStorage.setItem('medico_tipo', 'medico');
+  CLINICA_ID  = savedClinicaId;
+  currentUser = { role: savedRol, name: savedNombre, id: null };
+
+  document.getElementById('medNombre').textContent = savedNombre;
+  document.getElementById('sbMedNombre').textContent = savedNombre;
+
+  // Nombre real de la clínica en el header — se lee de Supabase usando
+  // CLINICA_ID (viene de localStorage.medico_clinica_id, ya resuelto arriba).
+  db.from('clinicas').select('nombre').eq('id', CLINICA_ID).single()
+    .then(({ data: clin }) => {
+      if (clin?.nombre) document.getElementById('topbarMedicoClinicaNombre').textContent = clin.nombre;
+    });
+
+  // currentUser no trae id (Login/index.html no lo guarda) — la ficha médica
+  // real (tabla `medicos`, la que sí tiene el id usado como medico_id en
+  // citas/historial_clinico/incapacidades) se busca por email, que
+  // Dashboard/index.html → crearMedico() garantiza que coincide con el de
+  // usuarios_clinica.
+  const { data: med, error: errMed } = await db.from('medicos')
+    .select('*')
+    .eq('clinica_id', CLINICA_ID)
+    .eq('email', savedEmail)
+    .eq('estado', 'activo')
+    .maybeSingle();
+
+  if (errMed) console.error('Error buscando ficha médica:', errMed);
+
+  if (!med) {
+    document.getElementById('sinFichaMsg').style.display = 'block';
+    document.getElementById('mainContentWrap').style.display = 'none';
+    document.body.style.display = 'block';
+    return;
+  }
+
+  medicoActual = med;
+  document.getElementById('medEspecialidad').textContent = med.especialidad || '—';
+  document.getElementById('sbMedEspecialidad').textContent = med.especialidad || '—';
+
+  await cargarDatos();
+  renderMedicoPanel();
+  document.body.style.display = 'block';
+})();
+</script>
+
+</body>
+</html>

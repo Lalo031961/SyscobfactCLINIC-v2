@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registrarse — SyscobfactCLINIC</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏥</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --blue:#1A56A0;--blue-dark:#123D74;--blue-light:#EAF1FB;--blue-mid:#5B85C2;
+  --bg:#F6F9FD;--surface:#FFFFFF;--text:#152238;--text2:#4A5A72;--border:#DCE6F5;
+  --error:#DC2626;--error-bg:#FEF2F2;--success:#16A34A;
+  --radius:14px;--radius-lg:22px;
+  --shadow:0 4px 20px rgba(26,86,160,0.08);--shadow-lg:0 16px 48px rgba(26,86,160,0.16);
+  --font-display:'Playfair Display',Georgia,serif;--font-body:'DM Sans',sans-serif;
+}
+html{font-size:16px}
+body{
+  font-family:var(--font-body);background:linear-gradient(180deg,var(--blue-light) 0%,var(--bg) 100%);
+  color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:40px 20px
+}
+a{color:var(--blue)}
+h1,h2{font-family:var(--font-display)}
+
+.wrap{width:100%;max-width:480px}
+.brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:28px;text-align:center}
+.brand-icon{
+  width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--blue),var(--blue-mid));
+  display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:var(--shadow)
+}
+.brand h1{font-size:1.4rem;font-weight:700;color:var(--blue-dark)}
+.brand p{font-size:.8rem;color:var(--text2);font-weight:500;margin-top:2px}
+
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:36px 32px;box-shadow:var(--shadow-lg)
+}
+.card h2{font-size:1.25rem;color:var(--text);margin-bottom:4px}
+.card .sub{font-size:.85rem;color:var(--text2);margin-bottom:26px}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:6px}
+.field input{
+  width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;
+  font-family:var(--font-body);font-size:.9rem;color:var(--text);background:#fff;transition:border-color .15s,box-shadow .15s
+}
+.field input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,160,.12)}
+.field input.invalid{border-color:var(--error)}
+.field .field-error{font-size:.76rem;color:var(--error);margin-top:5px;display:none}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.checkbox-row{display:flex;align-items:flex-start;gap:10px;margin:20px 0}
+.checkbox-row input{margin-top:3px;width:16px;height:16px;accent-color:var(--blue);flex-shrink:0;cursor:pointer}
+.checkbox-row label{font-size:.83rem;color:var(--text2);line-height:1.5;cursor:pointer}
+.checkbox-row .link-terminos{color:var(--blue);font-weight:600;text-decoration:underline;cursor:pointer;background:none;border:none;font:inherit;padding:0}
+
+.btn-submit{
+  width:100%;padding:14px;background:linear-gradient(135deg,var(--blue),var(--blue-mid));color:#fff;
+  font-weight:700;font-size:.95rem;border-radius:100px;box-shadow:0 8px 22px rgba(26,86,160,.32);
+  transition:transform .2s,box-shadow .2s,opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px
+}
+.btn-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 28px rgba(26,86,160,.42)}
+.btn-submit:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.alert{padding:12px 14px;border-radius:10px;font-size:.82rem;margin-bottom:18px;display:none}
+.alert.error{background:var(--error-bg);color:var(--error);border:1px solid #FECACA;display:block}
+.alert.success{background:#F0FDF4;color:var(--success);border:1px solid #BBF7D0;display:block}
+
+.foot-link{text-align:center;margin-top:20px;font-size:.85rem;color:var(--text2)}
+.foot-link a{font-weight:700;text-decoration:none}
+.foot-link a:hover{text-decoration:underline}
+
+/* Modal Términos */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(10,20,40,.55);display:none;align-items:center;justify-content:center;
+  z-index:999;padding:20px
+}
+.modal-overlay.open{display:flex}
+.modal-box{
+  background:#fff;border-radius:var(--radius-lg);max-width:560px;width:100%;max-height:80vh;
+  display:flex;flex-direction:column;box-shadow:var(--shadow-lg)
+}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:22px 26px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:1.1rem;color:var(--blue-dark);font-family:var(--font-display)}
+.modal-close{background:none;border:none;font-size:1.3rem;color:var(--text2);cursor:pointer;line-height:1}
+.modal-body{padding:22px 26px;overflow-y:auto;font-size:.85rem;color:var(--text2);line-height:1.7}
+.modal-body h4{color:var(--text);font-size:.92rem;margin:16px 0 6px}
+.modal-body h4:first-child{margin-top:0}
+.modal-foot{padding:16px 26px;border-top:1px solid var(--border);text-align:right}
+.modal-foot button{
+  background:var(--blue);color:#fff;font-weight:700;font-size:.85rem;padding:10px 22px;border-radius:100px
+}
+
+@media (max-width:520px){
+  .card{padding:28px 22px}
+  .row2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-icon">🏥</div>
+    <h1>SyscobfactCLINIC</h1>
+    <p>Sistema de Gestión Clínica para Panamá</p>
+  </div>
+
+  <div class="card">
+    <h2>Crear cuenta</h2>
+    <p class="sub">Registra tu clínica y comienza tu mes gratis.</p>
+
+    <div id="alertBox" class="alert"></div>
+
+    <form id="regForm" novalidate>
+      <div class="field">
+        <label for="fNombreClinica">Nombre de la clínica</label>
+        <input type="text" id="fNombreClinica" placeholder="Clínica San Rafael">
+        <p class="field-error" id="err_fNombreClinica"></p>
+      </div>
+
+      <div class="field">
+        <label for="fRuc">RUC de la clínica</label>
+        <input type="text" id="fRuc" placeholder="155-678-234">
+        <p class="field-error" id="err_fRuc"></p>
+      </div>
+
+      <div class="field">
+        <label for="fNombreAdmin">Nombre del administrador</label>
+        <input type="text" id="fNombreAdmin" placeholder="Dra. Ana Pérez">
+        <p class="field-error" id="err_fNombreAdmin"></p>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="fTelefono">Teléfono</label>
+          <input type="tel" id="fTelefono" placeholder="6942-5102">
+          <p class="field-error" id="err_fTelefono"></p>
+        </div>
+        <div class="field">
+          <label for="fEmail">Email</label>
+          <input type="email" id="fEmail" placeholder="tu@clinica.com">
+          <p class="field-error" id="err_fEmail"></p>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="fPassword">Contraseña</label>
+          <input type="password" id="fPassword" placeholder="Mínimo 6 caracteres">
+          <p class="field-error" id="err_fPassword"></p>
+        </div>
+        <div class="field">
+          <label for="fPassword2">Confirmar contraseña</label>
+          <input type="password" id="fPassword2" placeholder="Repite la contraseña">
+          <p class="field-error" id="err_fPassword2"></p>
+        </div>
+      </div>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="fAceptoTerminos">
+        <label for="fAceptoTerminos">
+          He leído y acepto los
+          <button type="button" class="link-terminos" onclick="abrirTerminos(event)">Términos y Condiciones</button>
+          de SyscobfactCLINIC
+        </label>
+      </div>
+      <p class="field-error" id="err_fAceptoTerminos" style="margin-top:-10px;margin-bottom:14px"></p>
+
+      <button type="submit" class="btn-submit" id="btnSubmit">Registrarse</button>
+    </form>
+
+    <p class="foot-link">¿Interesado en una demostración? <a href="../Landing/index.html#contacto">Contáctanos</a></p>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalTerminos">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>Términos y Condiciones</h3>
+      <button class="modal-close" onclick="cerrarTerminos()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>Al registrarte en SyscobfactCLINIC aceptas lo siguiente:</p>
+      <h4>1. Período de prueba</h4>
+      <p>Toda clínica nueva inicia con 1 mes de prueba gratuita en el plan Gratis, sin necesidad de tarjeta de crédito. Al vencer, tu cuenta se mantiene activa y puedes continuar con un plan de pago (Básico, Profesional o Clínica) según la cantidad de médicos de tu clínica.</p>
+      <h4>2. Datos de tu clínica</h4>
+      <p>La información proporcionada (nombre, RUC, contacto) debe ser veraz. Eres responsable de mantenerla actualizada y de custodiar las credenciales de acceso de tu cuenta y de los usuarios que autorices.</p>
+      <h4>3. Uso del servicio</h4>
+      <p>SyscobfactCLINIC es una herramienta de gestión clínica (agenda, historial, portal del paciente, facturación). No reemplaza el criterio médico profesional; la responsabilidad clínica sobre la información registrada es siempre del personal médico de tu clínica.</p>
+      <h4>4. Confidencialidad</h4>
+      <p>La información de pacientes y clínica se trata de forma confidencial y no se comparte con terceros salvo requerimiento legal.</p>
+      <h4>5. Jurisdicción</h4>
+      <p>Estos términos se rigen por las leyes de la República de Panamá.</p>
+      <p style="margin-top:14px">Dudas: <a href="mailto:riverahilario61@gmail.com">riverahilario61@gmail.com</a></p>
+    </div>
+    <div class="modal-foot">
+      <button onclick="cerrarTerminos()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SURL = 'https://jhprliiconsmqqvtkvpo.supabase.co';
+const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHJsaWljb25zbXFxdnRrdnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTYzOTYsImV4cCI6MjA4NTc5MjM5Nn0.bTF1uIgUnWXD_-J5JAhCdTJ6nTA7lkLtLMgFoG50NEI';
+const { createClient } = supabase;
+const db = createClient(SURL, SKEY, {
+  db: { schema: 'sistema_clinica_v2' },
+  global: { headers: { 'Accept-Profile': 'sistema_clinica_v2', 'Content-Profile': 'sistema_clinica_v2' } }
+});
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function abrirTerminos(e) {
+  e.preventDefault();
+  document.getElementById('modalTerminos').classList.add('open');
+}
+function cerrarTerminos() {
+  document.getElementById('modalTerminos').classList.remove('open');
+}
+
+// SHA-256 vía Web Crypto (nativo del navegador) — sin librerías externas.
+async function sha256Hex(texto) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function limpiarErrores() {
+  document.querySelectorAll('.field-error').forEach((el) => { el.style.display = 'none'; el.textContent = ''; });
+  document.querySelectorAll('input').forEach((el) => el.classList.remove('invalid'));
+  document.getElementById('alertBox').style.display = 'none';
+}
+
+function marcarError(id, mensaje) {
+  const input = document.getElementById(id);
+  const err = document.getElementById('err_' + id);
+  if (input) input.classList.add('invalid');
+  if (err) { err.textContent = mensaje; err.style.display = 'block'; }
+}
+
+function mostrarAlerta(mensaje, tipo) {
+  const box = document.getElementById('alertBox');
+  box.className = 'alert ' + tipo;
+  box.textContent = mensaje;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function validar(v) {
+  let ok = true;
+  if (!v.nombreClinica) { marcarError('fNombreClinica', 'Ingresa el nombre de la clínica.'); ok = false; }
+  if (!v.ruc) { marcarError('fRuc', 'Ingresa el RUC de la clínica.'); ok = false; }
+  if (!v.nombreAdmin) { marcarError('fNombreAdmin', 'Ingresa el nombre del administrador.'); ok = false; }
+  if (!v.telefono) { marcarError('fTelefono', 'Ingresa un teléfono.'); ok = false; }
+  if (!v.email) { marcarError('fEmail', 'Ingresa un email.'); ok = false; }
+  else if (!EMAIL_REGEX.test(v.email)) { marcarError('fEmail', 'El email no tiene un formato válido.'); ok = false; }
+  if (!v.password) { marcarError('fPassword', 'Ingresa una contraseña.'); ok = false; }
+  else if (v.password.length < 6) { marcarError('fPassword', 'Debe tener al menos 6 caracteres.'); ok = false; }
+  if (v.password && v.password2 && v.password !== v.password2) { marcarError('fPassword2', 'Las contraseñas no coinciden.'); ok = false; }
+  else if (!v.password2) { marcarError('fPassword2', 'Confirma tu contraseña.'); ok = false; }
+  if (!v.aceptoTerminos) { marcarError('fAceptoTerminos', 'Debes aceptar los Términos y Condiciones.'); ok = false; }
+  return ok;
+}
+
+document.getElementById('regForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  limpiarErrores();
+
+  const v = {
+    nombreClinica: document.getElementById('fNombreClinica').value.trim(),
+    ruc: document.getElementById('fRuc').value.trim(),
+    nombreAdmin: document.getElementById('fNombreAdmin').value.trim(),
+    telefono: document.getElementById('fTelefono').value.trim(),
+    email: document.getElementById('fEmail').value.trim().toLowerCase(),
+    password: document.getElementById('fPassword').value,
+    password2: document.getElementById('fPassword2').value,
+    aceptoTerminos: document.getElementById('fAceptoTerminos').checked,
+  };
+
+  if (!validar(v)) return;
+
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Creando cuenta...';
+
+  let clinicaCreada = null;
+  try {
+    // 1. Email no debe existir ya como clínica.
+    const { data: existente, error: errCheck } = await db
+      .from('clinicas')
+      .select('id')
+      .eq('email', v.email)
+      .maybeSingle();
+    if (errCheck) throw errCheck;
+    if (existente) {
+      marcarError('fEmail', 'Ya existe una cuenta registrada con este email.');
+      mostrarAlerta('Ya existe una cuenta registrada con este email. ¿Ya tienes cuenta? Inicia sesión.', 'error');
+      return;
+    }
+
+    // 2. Hash de la contraseña (SHA-256).
+    const passwordHash = await sha256Hex(v.password);
+
+    // 3. Insertar la clínica — 1 mes de prueba gratis desde hoy.
+    const hoy = new Date();
+    const vencimiento = new Date(hoy);
+    vencimiento.setMonth(vencimiento.getMonth() + 1);
+    const fISO = (d) => d.toISOString().slice(0, 10);
+
+    const { data: clinica, error: errClinica } = await db
+      .from('clinicas')
+      .insert({
+        nombre: v.nombreClinica,
+        ruc: v.ruc,
+        email: v.email,
+        telefono: v.telefono,
+        plan: 'Gratis',
+        estado: 'activo',
+        fecha_inicio: fISO(hoy),
+        fecha_vencimiento: fISO(vencimiento),
+        acepto_terminos: true,
+        fecha_acepto_terminos: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    if (errClinica) throw errClinica;
+    clinicaCreada = clinica;
+
+    // 4. Insertar el usuario administrador vinculado a la clínica.
+    const { data: usuario, error: errUsuario } = await db
+      .from('usuarios_clinica')
+      .insert({
+        clinica_id: clinica.id,
+        nombre: v.nombreAdmin,
+        email: v.email,
+        password: passwordHash,
+        rol: 'admin',
+        activo: true,
+      })
+      .select()
+      .single();
+    if (errUsuario) {
+      // Sin transacciones (solo REST) — si falla acá, no dejamos una
+      // clínica huérfana sin usuario administrador.
+      await db.from('clinicas').delete().eq('id', clinica.id);
+      throw errUsuario;
+    }
+
+    // 5. Sesión simple en localStorage, con prefijo admin_ (este registro
+    // siempre crea la cuenta admin de la clínica) — mismo esquema con
+    // prefijo que usa Login/index.html, para que esta sesión y una de
+    // médico abierta en otra pestaña no se pisen entre sí.
+    localStorage.setItem('admin_clinica_id', clinica.id);
+    localStorage.setItem('admin_nombre', usuario.nombre);
+    localStorage.setItem('admin_email', usuario.email);
+    localStorage.setItem('admin_rol', usuario.rol);
+    localStorage.setItem('admin_tipo', 'admin');
+
+    mostrarAlerta('✅ Cuenta creada. Redirigiendo...', 'success');
+    setTimeout(() => { window.location.replace('../Dashboard/index.html'); }, 900);
+  } catch (err) {
+    console.error(err);
+    mostrarAlerta(err.message || 'No se pudo completar el registro. Intenta de nuevo.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Registrarse';
+  }
+});
+</script>
+
+</body>
+</html>

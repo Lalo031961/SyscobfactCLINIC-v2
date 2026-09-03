@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1A56A0">
+<title>Portal del Médico — SyscobfactMED</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;-webkit-font-smoothing:antialiased}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:#F6F9FD;min-height:100vh;color:#152238}
+:root{
+  --blue:#1A56A0;--blue-dark:#123D74;--cyan:#5B85C2;
+  --blue-light:#EAF1FB;--blue-lighter:#F6F9FD;
+  --green:#22c55e;--green-light:#dcfce7;--green-text:#16a34a;
+  --orange:#f59e0b;--orange-light:#fef3c7;--orange-text:#d97706;
+  --indigo:#4f46e5;--indigo-light:#e0e7ff;
+  --teal:#1A56A0;--teal-light:#EAF1FB;
+}
+
+/* ══ LOGIN / SIN CLÍNICA — mismas clases .auth-* que PortalPacientes/
+   index.html, para que ambos portales luzcan idénticos en autenticación
+   (fondo claro #F5F6FA, sin el degradado azul de pantalla completa que
+   tenía esta versión antes). */
+#loginScreen,.sinclinica-wrap{position:fixed;inset:0;z-index:999;background:#F5F6FA;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.auth-inner{width:100%;max-width:380px}
+.auth-brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:22px;text-align:center}
+.auth-brand-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--blue),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 20px rgba(26,86,160,0.08)}
+.auth-brand h1{font-size:1.15rem;font-weight:700;color:var(--blue-dark)}
+.auth-brand p{font-size:.75rem;color:#4A5A72;font-weight:500;margin-top:2px}
+.auth-card{background:#fff;border:1px solid #DCE6F5;border-radius:12px;padding:28px 24px;box-shadow:0 16px 48px rgba(26,86,160,0.16);width:100%;max-width:360px}
+.auth-card h2{font-size:1.15rem;color:#152238;margin-bottom:4px;font-weight:700}
+.auth-card .sub{font-size:.8rem;color:#4A5A72;margin-bottom:20px}
+.login-field{margin-bottom:14px}
+.login-field label{display:block;font-size:.78rem;font-weight:600;color:#152238;margin-bottom:5px}
+.login-field input{width:100%;padding:11px 13px;border:1px solid #DCE6F5;border-radius:10px;font-size:.85rem;color:#152238;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.login-field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,160,.12)}
+.pw-wrap{position:relative;display:flex;align-items:center}
+.pw-btn{position:absolute;right:12px;background:none;border:none;cursor:pointer;font-size:18px;padding:0}
+.btn-login{width:100%;padding:13px;background:linear-gradient(135deg,var(--blue),var(--cyan));color:#fff;border:none;border-radius:100px;font-size:.88rem;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(26,86,160,.32);margin-top:4px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .2s,box-shadow .2s,opacity .2s}
+.btn-login:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 28px rgba(26,86,160,.42)}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.login-error{margin-top:0;margin-bottom:14px;font-size:.78rem;font-weight:600;color:#dc2626;text-align:left;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:0;display:none}
+.login-error.show{display:block;padding:11px 13px}
+.login-forgot{margin-top:18px;background:transparent;border:none;color:var(--blue);font-size:.8rem;font-weight:700;cursor:pointer;text-decoration:underline;width:100%;text-align:center}
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.sinclinica-card{background:#fff;border:1px solid #DCE6F5;border-radius:12px;padding:32px 26px;max-width:360px;text-align:center;box-shadow:0 16px 48px rgba(26,86,160,0.16)}
+
+/* ══ MAIN APP ══ */
+#mainApp{display:none;padding-bottom:40px}
+
+.app-header{
+  background:linear-gradient(145deg,#123D74 0%,#1A56A0 50%,#5B85C2 100%);
+  padding:52px 22px 32px;position:relative;overflow:hidden
+}
+.app-header::before{content:'';position:absolute;top:-60px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,0.08);pointer-events:none}
+.app-header::after{content:'';position:absolute;bottom:-18px;left:0;right:0;height:36px;background:#F6F9FD;border-radius:50% 50% 0 0/100% 100% 0 0}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.header-greeting{font-size:.7rem;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:.08em}
+.header-name{font-size:1.2rem;font-weight:700;color:#fff;margin-top:2px}
+.header-date{font-size:.7rem;color:rgba(255,255,255,0.7);margin-top:3px}
+.btn-logout{background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.3);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .2s}
+.btn-logout:active{background:rgba(255,100,100,0.3)}
+.btn-logout svg{width:18px;height:18px}
+.header-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;position:relative;z-index:1;margin-top:4px}
+.hstat{background:rgba(255,255,255,0.15);border-radius:14px;padding:10px 12px;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.2)}
+.hstat-val{font-size:1.25rem;font-weight:800;color:#fff;line-height:1}
+.hstat-lbl{font-size:.58rem;color:rgba(255,255,255,0.75);margin-top:3px;text-transform:uppercase;letter-spacing:.04em}
+
+.cards-wrap{padding:12px 18px 0}
+.section-title{font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;padding:4px 4px 10px;display:flex;align-items:center;gap:7px}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#e2e8f0,transparent)}
+
+.card{background:#fff;border-radius:20px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 12px rgba(26,86,160,0.08);border:1px solid rgba(26,86,160,0.06)}
+.card:active{box-shadow:0 4px 18px rgba(26,86,160,0.15)}
+.card-header{display:flex;align-items:center;gap:14px;padding:18px 18px 16px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+.card-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-icon svg{width:24px;height:24px}
+.card-icon--green{background:var(--green-light)}
+.card-icon--orange{background:var(--orange-light)}
+.card-info{flex:1;min-width:0}
+.card-title{font-size:.88rem;font-weight:700;color:#1a1a1a}
+.card-sub{font-size:.72rem;color:#6b7280;margin-top:2px}
+.card-badge{font-size:1.7rem;font-weight:800;line-height:1;min-width:36px;text-align:right}
+.card-badge--green{color:var(--green-text)}
+.card-badge--orange{color:var(--orange-text)}
+.card-chevron{width:20px;height:20px;transition:transform .25s ease;flex-shrink:0}
+.card-chevron svg{width:20px;height:20px;display:block}
+.card--open .card-chevron{transform:rotate(180deg)}
+.card-body{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1)}
+.card--open .card-body{max-height:900px}
+.card-divider{height:1px;background:linear-gradient(90deg,transparent 18px,#EAF1FB 18px,#EAF1FB calc(100% - 18px),transparent calc(100% - 18px))}
+
+.patient-row{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #F6F9FD}
+.patient-row:last-child{border-bottom:none}
+.patient-time{background:var(--blue-lighter);border-radius:10px;padding:6px 10px;font-size:.75rem;font-weight:700;color:var(--blue-dark);flex-shrink:0;min-width:58px;text-align:center}
+.patient-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff;flex-shrink:0}
+.patient-name{font-size:.84rem;font-weight:600;color:#1a1a1a;flex:1;min-width:0}
+.patient-name-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.patient-sub{font-size:.7rem;font-weight:500;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.btn-email-wrap{padding:6px 18px 18px}
+.btn-email{width:100%;background:linear-gradient(135deg,var(--blue),var(--cyan));color:#fff;border:none;border-radius:14px;padding:14px 18px;font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 3px 10px rgba(26,86,160,0.35);transition:transform .15s;-webkit-tap-highlight-color:transparent}
+.btn-email:active{transform:scale(0.96)}
+.btn-email svg{width:18px;height:18px}
+
+.billing-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0 14px}
+.billing-card{background:#fff;border-radius:16px;padding:16px 14px;box-shadow:0 2px 10px rgba(26,86,160,0.08);border:1px solid rgba(26,86,160,0.06);position:relative;overflow:hidden}
+.billing-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0}
+.billing-card.hoy::before{background:linear-gradient(90deg,#1A56A0,#5B85C2)}
+.billing-card.mes::before{background:linear-gradient(90deg,#123D74,#22c55e)}
+.billing-card.anio::before{background:linear-gradient(90deg,#4f46e5,#7c3aed)}
+.billing-card.notas::before{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+.billing-card.anio,.billing-card.notas{grid-column:1/-1}
+.billing-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.9rem;margin-bottom:10px}
+.billing-card.hoy .billing-icon{background:#EAF1FB}
+.billing-card.mes .billing-icon{background:#EAF1FB}
+.billing-card.anio .billing-icon{background:#e0e7ff}
+.billing-card.notas .billing-icon{background:#fef3c7}
+.billing-lbl{font-size:.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.billing-val{font-size:1.35rem;font-weight:800;color:#1e293b;line-height:1}
+.billing-card.anio .billing-val{font-size:1.5rem;color:var(--indigo)}
+.billing-card.notas .billing-val{font-size:1.5rem;color:var(--orange-text)}
+.billing-sub{font-size:.62rem;color:#94a3b8;margin-top:4px}
+.mini-chart{display:flex;align-items:flex-end;gap:3px;height:36px;margin-top:10px;padding:0 2px}
+.mini-bar{flex:1;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#4f46e5,#7c3aed);opacity:0.6;min-height:4px}
+.mini-bar.active{opacity:1}
+.mini-bar-lbl{display:flex;justify-content:space-between;padding:0 2px;margin-top:4px}
+.mini-bar-lbl span{font-size:.52rem;color:#94a3b8}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:#fff;width:100%;border-radius:24px 24px 0 0;padding:10px 22px 40px;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-height:75vh;overflow-y:auto}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-handle{width:40px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto 18px}
+.modal-title{font-size:1.05rem;font-weight:700;color:#1a1a1a;margin-bottom:6px}
+.modal-desc{font-size:.76rem;color:#6b7280;margin-bottom:16px;line-height:1.4}
+.modal-recipients{background:var(--blue-lighter);border-radius:14px;overflow:hidden;margin-bottom:20px;border:1px solid #bae6fd}
+.modal-recipient{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #EAF1FB}
+.modal-recipient:last-child{border-bottom:none}
+.modal-recipient .r-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:#fff;flex-shrink:0}
+.modal-recipient .r-info{flex:1;min-width:0}
+.modal-recipient .r-name{font-size:.8rem;font-weight:700;color:#1a1a1a}
+.modal-recipient .r-email{font-size:.68rem;color:#6b7280}
+.modal-recipient .r-time{font-size:.7rem;font-weight:600;color:var(--orange-text);background:var(--orange-light);padding:3px 8px;border-radius:6px;flex-shrink:0}
+.modal-actions{display:flex;gap:10px}
+.modal-actions button{flex:1;border:none;border-radius:14px;padding:14px;font-size:.82rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+.modal-actions button:active{transform:scale(0.96)}
+.btn-modal-cancel{background:#f3f4f6;color:#4b5563}
+.btn-modal-confirm{background:linear-gradient(135deg,var(--blue),var(--cyan));color:#fff;box-shadow:0 2px 8px rgba(26,86,160,0.35)}
+
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:#123D74;color:#fff;padding:13px 24px;border-radius:14px;font-size:.78rem;font-weight:600;white-space:nowrap;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.2);transition:transform .3s cubic-bezier(.4,0,.2,1);pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ══ SIN CLINICA_ID EN LA URL ══ -->
+<div class="sinclinica-wrap" id="sinClinicaScreen" style="display:none">
+  <div class="sinclinica-card">
+    <div style="font-size:2.4rem;margin-bottom:14px">🔗</div>
+    <h1 style="font-size:1.1rem;font-weight:700;color:#1a1a1a;margin-bottom:8px">Enlace incompleto</h1>
+    <p style="color:#64748b;font-size:.85rem;line-height:1.6">Este portal se abre con el enlace que te entrega tu clínica — no es posible ingresar sin él.</p>
+  </div>
+</div>
+
+<!-- ══ PANTALLA DE LOGIN — mismo patrón visual que PortalPacientes/
+     index.html: logo/nombre real de la clínica/"Portal del Médico" DENTRO
+     del card blanco, fondo claro (sin el degradado azul de pantalla
+     completa que tenía antes). ══ -->
+<div id="loginScreen" style="display:none">
+  <div class="auth-inner">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="auth-brand-icon">🏥</div>
+        <h1 id="brandNombreLogin">SyscobfactCLINIC</h1>
+        <p>Portal del Médico</p>
+      </div>
+      <h2>Bienvenido</h2>
+      <p class="sub">Ingrese con su email y contraseña</p>
+      <div class="login-error" id="loginError">Contacte al administrador de la clínica para obtener sus credenciales de acceso</div>
+      <form id="loginForm" onsubmit="return false">
+        <div class="login-field">
+          <label for="lEmail">Email</label>
+          <input type="email" id="lEmail" placeholder="tu@clinica.com" autocomplete="username">
+        </div>
+        <div class="login-field">
+          <label for="lPass">Contraseña</label>
+          <div class="pw-wrap">
+            <input type="password" id="lPass" placeholder="••••••••" style="padding-right:44px" autocomplete="current-password">
+            <button type="button" class="pw-btn" id="tglPass" onclick="togglePw()">👁️‍🗨️</button>
+          </div>
+        </div>
+        <button type="submit" class="btn-login" id="btnLogin" onclick="validarLogin()">
+          🔐 Ingresar
+        </button>
+      </form>
+      <button onclick="olvideContrasena()" class="login-forgot">¿Olvidé mi contraseña?</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PORTAL PRINCIPAL ══ -->
+<div id="mainApp">
+  <div class="app-header">
+    <div class="header-top">
+      <div>
+        <div class="header-greeting" id="headerGreeting">—</div>
+        <div class="header-name" id="headerNombre">—</div>
+        <div class="header-date" id="headerDate"></div>
+      </div>
+      <button class="btn-logout" onclick="cerrarSesion()" title="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="header-stats">
+      <div class="hstat"><div class="hstat-val" id="hstatConfirmadas">—</div><div class="hstat-lbl">Confirmadas</div></div>
+      <div class="hstat"><div class="hstat-val" id="hstatPendientes">—</div><div class="hstat-lbl">Pendientes</div></div>
+      <div class="hstat"><div class="hstat-val" id="hstatNotas">—</div><div class="hstat-lbl">Notas Hoy</div></div>
+    </div>
+  </div>
+
+  <div class="cards-wrap">
+    <div class="section-title">📅 Citas de Hoy</div>
+
+    <div class="card" id="cardConfirmadas">
+      <div class="card-header" onclick="toggleCard('cardConfirmadas')">
+        <div class="card-icon card-icon--green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div class="card-info"><div class="card-title">Citas Confirmadas</div><div class="card-sub">Hoy · Toque para ver</div></div>
+        <div class="card-badge card-badge--green" id="countConfirmadas">—</div>
+        <div class="card-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+      <div class="card-body"><div class="card-divider"></div><div id="listConfirmadas"></div></div>
+    </div>
+
+    <div class="card" id="cardPendientes">
+      <div class="card-header" onclick="toggleCard('cardPendientes')">
+        <div class="card-icon card-icon--orange">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--orange-text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="card-info"><div class="card-title">Citas Pendientes</div><div class="card-sub">Hoy · Toque para ver</div></div>
+        <div class="card-badge card-badge--orange" id="countPendientes">—</div>
+        <div class="card-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      </div>
+      <div class="card-body">
+        <div class="card-divider"></div>
+        <div id="listPendientes"></div>
+        <div class="btn-email-wrap">
+          <button class="btn-email" onclick="openModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Enviar Email a Pendientes
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">💰 Mis Números de Facturación</div>
+    <div class="billing-grid">
+      <div class="billing-card hoy"><div class="billing-icon">📆</div><div class="billing-lbl">Cobrado Hoy</div><div class="billing-val" id="billingHoy">B/. —</div><div class="billing-sub" id="billingHoyNotas">— notas</div></div>
+      <div class="billing-card mes"><div class="billing-icon">📅</div><div class="billing-lbl">Este Mes</div><div class="billing-val" id="billingMes">B/. —</div><div class="billing-sub" id="billingMesNotas">— notas</div></div>
+      <div class="billing-card anio">
+        <div class="billing-icon">📊</div>
+        <div class="billing-lbl">Total del Año <span id="billingAnioLabel"></span></div>
+        <div class="billing-val" id="billingAnio">B/. —</div>
+        <div class="billing-sub" id="billingAnioNotas">— notas en el año</div>
+        <div class="mini-chart" id="miniChart"></div>
+        <div class="mini-bar-lbl" id="miniBarLbl"></div>
+      </div>
+      <div class="billing-card notas"><div class="billing-icon">🧾</div><div class="billing-lbl">Total Facturas Emitidas (Historial)</div><div class="billing-val" id="billingTotalNotas">—</div><div class="billing-sub">Desde el inicio en la plataforma</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📧 Enviar Email de Recordatorio</div>
+    <div class="modal-desc">Se enviará un recordatorio a los pacientes pendientes de confirmar.</div>
+    <div class="modal-recipients" id="modalRecipients"></div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-modal-confirm" onclick="sendEmails()">Aceptar y Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+const SURL = 'https://jhprliiconsmqqvtkvpo.supabase.co';
+const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHJsaWljb25zbXFxdnRrdnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTYzOTYsImV4cCI6MjA4NTc5MjM5Nn0.bTF1uIgUnWXD_-J5JAhCdTJ6nTA7lkLtLMgFoG50NEI';
+
+// Sin CLINICA_ID hardcodeado — igual que PortalPacientes/index.html: viene
+// del link que le da la clínica al médico (?clinica_id=...), nunca de una
+// selección manual. Se guarda en sessionStorage (no localStorage) junto con
+// el resto de la sesión — así, aunque este portal y DashboardMedico/
+// index.html (que sí usa localStorage con prefijo medico_*) estén abiertos
+// al mismo tiempo en el mismo navegador, nunca comparten ni se pisan la
+// sesión: sessionStorage es exclusivo de cada pestaña.
+const CLINICA_ID_URL = new URLSearchParams(window.location.search).get('clinica_id');
+let CLINICA_ID = CLINICA_ID_URL || sessionStorage.getItem('medicomovil_clinica_id');
+
+const { createClient } = supabase;
+const db = createClient(SURL, SKEY, {
+  db: { schema: 'sistema_clinica_v2' },
+  global: { headers: { 'Accept-Profile':'sistema_clinica_v2','Content-Profile':'sistema_clinica_v2' } }
+});
+
+let medicoActual = null;
+let confirmadas  = [];
+let pendientes   = [];
+let pacientesCache = {}; // id -> {nombre_completo, email}
+let clinicaInfo = { nombre: 'SyscobfactCLINIC' }; // fallback mientras carga
+
+// Nombre real de la clínica para el header del login — mismo patrón que
+// cargarClinicaInfo() en PortalPacientes/index.html.
+async function cargarClinicaInfo() {
+  if (!CLINICA_ID) return;
+  try {
+    const { data, error } = await db.from('clinicas').select('nombre').eq('id', CLINICA_ID).single();
+    if (error) { console.error(error); return; }
+    if (data?.nombre) {
+      clinicaInfo.nombre = data.nombre;
+      const el = document.getElementById('brandNombreLogin');
+      if (el) el.textContent = data.nombre;
+    }
+  } catch(e) { console.error(e); }
+}
+
+const avatarColors = ['#1A56A0','#123D74','#5B85C2','#0e7490','#1d4ed8','#4f46e5'];
+
+// SHA-256 vía Web Crypto — mismo helper que Login/index.html, Register/
+// index.html y PortalPacientes/index.html.
+async function sha256Hex(texto) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function formatHora12(hora) {
+  if (!hora) return '';
+  const [h, m] = hora.split(':');
+  const hour = parseInt(h);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return hour12 + ':' + m + ' ' + ampm;
+}
+
+function fechaLocalHoy() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// ══ INIT ══════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  if (!CLINICA_ID) {
+    document.getElementById('sinClinicaScreen').style.display = 'flex';
+    return;
+  }
+  setFechaHeader();
+  await cargarClinicaInfo();
+  const savedId = sessionStorage.getItem('medicomovil_id');
+  if (savedId) {
+    try {
+      const { data } = await db.from('medicos').select('*').eq('id', savedId).eq('clinica_id', CLINICA_ID).single();
+      if (data) { medicoActual = data; mostrarPortal(); return; }
+    } catch(e) {}
+  }
+  document.getElementById('loginScreen').style.display = 'flex';
+});
+
+// ══ LOGIN ══════════════════════════════
+function togglePw() {
+  const i = document.getElementById('lPass'), bt = document.getElementById('tglPass');
+  if (i.type === 'password') { i.type = 'text'; bt.textContent = '👁️'; }
+  else { i.type = 'password'; bt.textContent = '👁️‍🗨️'; }
+}
+
+// El médico NO se registra desde este portal — lo da de alta el admin desde
+// Dashboard/index.html (crearMedico()), que ya crea AMBAS filas: la de
+// acceso en usuarios_clinica (email/password/rol='medico') y la ficha
+// clínica en medicos (sin password — nunca fue pensada para login). Por
+// eso el login acá se valida contra usuarios_clinica, exactamente igual
+// que Login/index.html, y luego se resuelve medicoActual (la fila de
+// `medicos`, la que sí tiene el id que usan citas/facturas como medico_id)
+// buscando por email — mismo patrón que bootSesion() en DashboardMedico/
+// index.html.
+async function validarLogin() {
+  const email = document.getElementById('lEmail').value.trim().toLowerCase();
+  const pass  = document.getElementById('lPass').value;
+  const err   = document.getElementById('loginError');
+  const btn   = document.getElementById('btnLogin');
+  err.classList.remove('show');
+  if (!email || !pass) { err.textContent = 'Complete todos los campos'; err.classList.add('show'); return; }
+
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Verificando...';
+  try {
+    const passwordHash = await sha256Hex(pass);
+    const { data: usuario, error } = await db.from('usuarios_clinica').select('*')
+      .eq('clinica_id', CLINICA_ID).eq('email', email).eq('password', passwordHash)
+      .eq('rol', 'medico').eq('activo', true).maybeSingle();
+    if (error) throw error;
+    if (!usuario) {
+      err.textContent = 'Contacte al administrador de la clínica para obtener sus credenciales de acceso';
+      err.classList.add('show');
+      return;
+    }
+
+    const { data: med, error: errMed } = await db.from('medicos').select('*')
+      .eq('clinica_id', CLINICA_ID).eq('email', usuario.email).eq('estado', 'activo').maybeSingle();
+    if (errMed) console.error(errMed);
+    if (!med) {
+      err.textContent = 'Contacte al administrador de la clínica para obtener sus credenciales de acceso';
+      err.classList.add('show');
+      return;
+    }
+
+    medicoActual = med;
+    sessionStorage.setItem('medicomovil_id', med.id);
+    sessionStorage.setItem('medicomovil_clinica_id', med.clinica_id);
+    CLINICA_ID = med.clinica_id;
+    document.getElementById('loginScreen').style.display = 'none';
+    mostrarPortal();
+  } catch(e) {
+    err.textContent = 'Error al iniciar sesión'; err.classList.add('show');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i>🔐</i> Ingresar';
+  }
+}
+
+function mostrarPortal() {
+  document.getElementById('headerNombre').textContent = medicoActual.nombre_completo || 'Dr/a.';
+  document.getElementById('mainApp').style.display = 'block';
+  loadCitas();
+  cargarEstadisticasFacturacion();
+}
+
+function cerrarSesion() {
+  if (!confirm('¿Desea cerrar sesión?')) return;
+  medicoActual = null;
+  sessionStorage.removeItem('medicomovil_id');
+  sessionStorage.removeItem('medicomovil_clinica_id');
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('lEmail').value = '';
+  document.getElementById('lPass').value = '';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ══ FECHA ══════════════════════════════
+function setFechaHeader() {
+  const d = new Date();
+  const h = d.getHours();
+  document.getElementById('headerGreeting').textContent = h<12?'Buenos días':h<18?'Buenas tardes':'Buenas noches';
+  document.getElementById('headerDate').textContent = d.toLocaleDateString('es-PA',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('billingAnioLabel').textContent = d.getFullYear();
+}
+
+function getInitials(n) {
+  const p = (n||'P A').trim().split(' ');
+  return (p.length>=2?p[0][0]+p[1][0]:(p[0][0]+(p[0][1]||''))).toUpperCase();
+}
+
+// ══ CITAS ══════════════════════════════
+// Reemplaza a la RPC obtener_citas_hoy (no existe en sistema_clinica_v2) —
+// se arma el mismo resultado con dos consultas directas (citas + pacientes)
+// y un join en memoria, mismo patrón que usa DashboardMedico/index.html.
+async function loadCitas() {
+  try {
+    const hoy = fechaLocalHoy();
+    const { data: citasHoy, error } = await db.from('citas').select('*')
+      .eq('clinica_id', CLINICA_ID).eq('medico_id', medicoActual.id).eq('fecha', hoy);
+    if (error) throw error;
+
+    const idsPacientes = [...new Set((citasHoy||[]).map(c => c.paciente_id).filter(Boolean))];
+    if (idsPacientes.length) {
+      const { data: pacs } = await db.from('pacientes').select('id,nombre_completo,email').in('id', idsPacientes);
+      pacientesCache = {};
+      (pacs||[]).forEach(p => { pacientesCache[p.id] = p; });
+    }
+
+    confirmadas = []; pendientes = [];
+    (citasHoy||[]).forEach((c,i) => {
+      const pac = pacientesCache[c.paciente_id];
+      const o = {
+        id: c.id, time: formatHora12(c.hora), name: pac?.nombre_completo || 'Paciente',
+        initials: getInitials(pac?.nombre_completo), color: avatarColors[i % avatarColors.length],
+        email: pac?.email || '', tipoLabel: c.motivo || 'Consulta General', estado: c.estado
+      };
+      if (c.estado === 'confirmada') confirmadas.push(o);
+      else if (c.estado === 'pendiente') pendientes.push(o);
+    });
+    renderListas();
+  } catch(e) { console.error(e); showToast('⚠️ Error al cargar citas'); }
+}
+
+function renderRow(p) {
+  const estadoTxt = p.estado==='confirmada' ? 'Confirmada' : 'Por Confirmar';
+  return `<div class="patient-row"><div class="patient-time">${p.time}</div><div class="patient-avatar" style="background:${p.color}">${p.initials}</div><div class="patient-name"><div class="patient-name-txt">${p.name}</div><div class="patient-sub">${p.tipoLabel} | ${estadoTxt}</div></div></div>`;
+}
+
+function renderListas() {
+  const empty = txt => `<div style="padding:16px 18px;font-size:.78rem;color:#94a3b8;text-align:center">${txt}</div>`;
+  document.getElementById('listConfirmadas').innerHTML = confirmadas.length ? confirmadas.map(renderRow).join('') : empty('Sin citas confirmadas hoy');
+  document.getElementById('listPendientes').innerHTML  = pendientes.length  ? pendientes.map(renderRow).join('')  : empty('Sin citas pendientes hoy');
+  document.getElementById('countConfirmadas').textContent = confirmadas.length;
+  document.getElementById('countPendientes').textContent  = pendientes.length;
+  document.getElementById('hstatConfirmadas').textContent = confirmadas.length;
+  document.getElementById('hstatPendientes').textContent  = pendientes.length;
+}
+
+// ══ FACTURACIÓN ════════════════════════
+// Reemplaza a notas_cobro (no existe en sistema_clinica_v2) por facturas,
+// filtrado por medico_id — mismo concepto (monto en vez de total).
+async function cargarEstadisticasFacturacion() {
+  if (!medicoActual) return;
+  const ahora = new Date();
+  const anio  = ahora.getFullYear();
+  const mes   = ahora.getMonth()+1;
+  const hoy   = fechaLocalHoy();
+  const iMes  = `${anio}-${String(mes).padStart(2,'0')}-01`;
+  const iAnio = `${anio}-01-01`;
+  try {
+    const {data:tot}  = await db.from('facturas').select('id').eq('medico_id',medicoActual.id).eq('clinica_id',CLINICA_ID);
+    document.getElementById('billingTotalNotas').textContent = tot?.length||0;
+
+    const {data:dHoy} = await db.from('facturas').select('monto').eq('medico_id',medicoActual.id).eq('clinica_id',CLINICA_ID).eq('fecha',hoy);
+    const tHoy=((dHoy||[]).reduce((s,n)=>s+Number(n.monto),0));
+    document.getElementById('billingHoy').textContent      = 'B/. '+tHoy.toFixed(2);
+    document.getElementById('billingHoyNotas').textContent = (dHoy?.length||0)+' notas';
+    document.getElementById('hstatNotas').textContent      = dHoy?.length||0;
+
+    const {data:dMes} = await db.from('facturas').select('monto').eq('medico_id',medicoActual.id).eq('clinica_id',CLINICA_ID).gte('fecha',iMes).lte('fecha',hoy);
+    document.getElementById('billingMes').textContent      = 'B/. '+((dMes||[]).reduce((s,n)=>s+Number(n.monto),0)).toFixed(2);
+    document.getElementById('billingMesNotas').textContent = (dMes?.length||0)+' notas';
+
+    const {data:dAnio}= await db.from('facturas').select('monto,fecha').eq('medico_id',medicoActual.id).eq('clinica_id',CLINICA_ID).gte('fecha',iAnio).lte('fecha',hoy);
+    const tAnio=((dAnio||[]).reduce((s,n)=>s+Number(n.monto),0));
+    document.getElementById('billingAnio').textContent      = 'B/. '+tAnio.toFixed(2);
+    document.getElementById('billingAnioNotas').textContent = (dAnio?.length||0)+' notas en el año';
+
+    const porMes=Array(12).fill(0);
+    (dAnio||[]).forEach(n=>{porMes[parseInt(n.fecha.split('-')[1])-1]+=Number(n.monto)});
+    const meses=['E','F','M','A','M','J','J','A','S','O','N','D'];
+    const maxV=Math.max(...porMes.slice(0,mes),1);
+    let ch='',lb='';
+    for(let i=0;i<mes;i++){const pct=Math.max((porMes[i]/maxV)*100,4);ch+=`<div class="mini-bar${i===mes-1?' active':''}" style="height:${pct}%" title="B/. ${porMes[i].toFixed(2)}"></div>`;}
+    lb=`<span>${meses[0]}</span><span>${meses[Math.floor((mes-1)/2)]}</span><span>${meses[mes-1]}</span>`;
+    document.getElementById('miniChart').innerHTML=ch;
+    document.getElementById('miniBarLbl').innerHTML=lb;
+  } catch(e){console.error(e);}
+}
+
+// ══ MODAL / TOGGLE ═════════════════════
+function toggleCard(id){document.getElementById(id).classList.toggle('card--open')}
+
+function openModal(){
+  document.getElementById('modalRecipients').innerHTML=pendientes.map(p=>`<div class="modal-recipient"><div class="r-avatar" style="background:${p.color}">${p.initials}</div><div class="r-info"><div class="r-name">${p.name}</div><div class="r-email">${p.email||'Sin email'}</div></div><div class="r-time">Cita ${p.time}</div></div>`).join('');
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open')}
+
+async function sendEmails(){
+  closeModal();
+  try{
+    const ids=pendientes.map(p=>p.id);
+    if(!ids.length)return;
+    const{error}=await db.from('citas').update({recordatorio_enviado:true}).in('id',ids);
+    if(error)throw error;
+    showToast('✉️ Emails enviados exitosamente');
+    await loadCitas();
+  }catch(e){showToast('⚠️ Error al enviar emails');}
+}
+
+document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal()});
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
+
+// ══ OLVIDÉ MI CONTRASEÑA ═══════════════
+// Reemplaza a "olvidé mi PIN" — ahora genera una contraseña temporal (no un
+// PIN de 4 dígitos), la HASHEA antes de guardarla (v1 guardaba el PIN en
+// texto plano) y reutiliza el mismo servicio/plantilla de EmailJS ya
+// configurado para el envío.
+// La contraseña real vive en usuarios_clinica (rol='medico'), no en
+// medicos — mismo cambio que validarLogin(). El nombre para el correo de
+// aviso sí sale de medicos (usuarios_clinica.nombre puede no coincidir
+// exactamente con el nombre clínico formal).
+async function olvideContrasena() {
+  const email = prompt('Ingrese su correo registrado:');
+  if (!email) return;
+
+  try {
+    const emailNorm = email.trim().toLowerCase();
+    const { data: usuario, error } = await db
+      .from('usuarios_clinica')
+      .select('id, nombre, email')
+      .eq('clinica_id', CLINICA_ID)
+      .eq('email', emailNorm)
+      .eq('rol', 'medico')
+      .eq('activo', true)
+      .single();
+
+    if (error || !usuario) {
+      showToast('❌ Correo no encontrado');
+      return;
+    }
+
+    const { data: med } = await db
+      .from('medicos')
+      .select('nombre_completo')
+      .eq('clinica_id', CLINICA_ID)
+      .eq('email', emailNorm)
+      .eq('estado', 'activo')
+      .maybeSingle();
+
+    const nuevaClave = Math.random().toString(36).slice(-8);
+    const claveHash = await sha256Hex(nuevaClave);
+
+    const { error: updateError } = await db
+      .from('usuarios_clinica')
+      .update({ password: claveHash })
+      .eq('id', usuario.id);
+    if (updateError) throw updateError;
+
+    await emailjs.init('BjNTHomP2yWKoUjjS');
+    await emailjs.send(
+      'service_hdb1v89',
+      'template_pin_recovery',
+      {
+        medico_nombre: med?.nombre_completo || usuario.nombre,
+        pin_codigo:    nuevaClave,
+        to_email:      usuario.email
+      }
+    );
+
+    showToast('✅ Se generó una contraseña nueva y fue enviada a su correo');
+
+  } catch(e) {
+    console.error(e);
+    showToast('❌ Error al restablecer contraseña');
+  }
+}
+</script>
+</body>
+</html>

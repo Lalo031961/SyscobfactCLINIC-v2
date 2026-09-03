@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal del Paciente — SyscobfactCLINIC</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏥</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'DM Sans',sans-serif; background:#F6F9FD; }
+    .spinner { width:18px; height:18px; border:3px solid rgba(26,86,160,0.15); border-top-color:#1A56A0; border-radius:50%; animation:spin 0.6s linear infinite; display:inline-block; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .pw-wrap { position:relative; display:flex; align-items:center; }
+    .pw-btn { position:absolute; right:12px; background:none; border:none; cursor:pointer; font-size:18px; padding:0; }
+    .err-box { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; padding:12px; border-radius:10px; font-size:.82rem; }
+    input:focus { border-color:#1A56A0 !important; outline:none; box-shadow:0 0 0 3px rgba(26,86,160,.12) !important; }
+    .btn-p { width:100%; padding:13px; background:linear-gradient(135deg,#1A56A0,#5B85C2); color:#fff; font-weight:700; font-size:.88rem; border:none; border-radius:12px; cursor:pointer; box-shadow:0 4px 14px rgba(26,86,160,.35); transition:transform .2s; font-family:'DM Sans',sans-serif; display:flex; align-items:center; justify-content:center; gap:8px; }
+    .btn-p:hover { transform:translateY(-1px); }
+    .btn-p:disabled { opacity:.7; cursor:not-allowed; transform:none; }
+    .link-t { color:#1A56A0; font-weight:700; text-decoration:none; }
+
+    /* Pantallas Login / Crear Cuenta — mismo patrón de clases (variables,
+       .field, .card, .btn-submit) que Login/index.html del proyecto v2,
+       con los valores puntuales pedidos para este portal (fondo #F5F6FA,
+       card max-width 380px, radius 12px). El resto del portal (dashboard,
+       agendar, notificaciones) sigue con su estilo inline propio — no se
+       tocó, esto es solo para auth. */
+    :root{
+      --blue:#1A56A0;--blue-dark:#123D74;--blue-light:#EAF1FB;--blue-mid:#5B85C2;
+      --auth-bg:#F5F6FA;--text:#152238;--text2:#4A5A72;--border:#DCE6F5;
+      --error:#DC2626;--error-bg:#FEF2F2;
+      --shadow:0 4px 20px rgba(26,86,160,0.08);--shadow-lg:0 16px 48px rgba(26,86,160,0.16);
+      --font-display:'Playfair Display',Georgia,serif;
+    }
+    .auth-wrap{min-height:100vh;background:var(--auth-bg);display:flex;align-items:center;justify-content:center;padding:24px 16px}
+    .auth-inner{width:100%;max-width:380px}
+    .auth-brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:22px;text-align:center}
+    .auth-brand-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--blue),var(--blue-mid));display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:var(--shadow)}
+    .auth-brand h1{font-family:var(--font-display);font-size:1.15rem;font-weight:700;color:var(--blue-dark)}
+    .auth-brand p{font-size:.75rem;color:var(--text2);font-weight:500;margin-top:2px}
+    .auth-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:28px 24px;box-shadow:var(--shadow-lg)}
+    .auth-card h2{font-family:var(--font-display);font-size:1.15rem;color:var(--text);margin-bottom:4px;font-weight:700}
+    .auth-card .sub{font-size:.8rem;color:var(--text2);margin-bottom:20px}
+    .auth-field{margin-bottom:14px}
+    .auth-field label{display:block;font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:5px}
+    .auth-field input{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:10px;font-size:.85rem;color:var(--text);background:#fff;font-family:'DM Sans',sans-serif}
+    .auth-field input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,160,.12)}
+    .auth-field input[readonly]{background:#F6F9FD;color:var(--text2)}
+    .auth-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--blue),var(--blue-mid));color:#fff;font-weight:700;font-size:.88rem;border:none;border-radius:100px;cursor:pointer;box-shadow:0 8px 22px rgba(26,86,160,.32);transition:transform .2s,box-shadow .2s,opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'DM Sans',sans-serif;margin-top:4px}
+    .auth-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 28px rgba(26,86,160,.42)}
+    .auth-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+    .auth-alert{padding:11px 13px;border-radius:10px;font-size:.78rem;margin-bottom:14px;background:var(--error-bg);color:var(--error);border:1px solid #FECACA}
+    .auth-foot{text-align:center;margin-top:18px;font-size:.8rem;color:var(--text2)}
+    .auth-foot a{color:var(--blue);font-weight:700;text-decoration:none}
+    .auth-foot a:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;gap:12px">
+    <div class="spinner"></div>
+    <p style="color:#94a3b8;font-size:.85rem">Cargando...</p>
+  </div>
+</div>
+<script>
+const SURL = 'https://jhprliiconsmqqvtkvpo.supabase.co';
+const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHJsaWljb25zbXFxdnRrdnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTYzOTYsImV4cCI6MjA4NTc5MjM5Nn0.bTF1uIgUnWXD_-J5JAhCdTJ6nTA7lkLtLMgFoG50NEI';
+// Sin CLINICA_ID hardcodeado — cada clínica le entrega a sus pacientes un
+// link propio con su clinica_id en la URL (?clinica_id=...), así el
+// paciente nunca elige ni escribe nada: el link ya sabe a qué clínica
+// pertenece. Ese parámetro manda sobre cualquier sesión vieja en
+// localStorage al momento de LOGUEARSE/ACTIVARSE (evita, ej., que una
+// cédula de prueba repetida en dos clínicas distintas matchee la
+// incorrecta) — una vez logueado, la sesión ya guardada en localStorage es
+// la que manda en visitas posteriores sin el parámetro en la URL.
+const CLINICA_ID_URL = new URLSearchParams(window.location.search).get('clinica_id');
+let CLINICA_ID = CLINICA_ID_URL || localStorage.getItem('paciente_clinica_id');
+console.log('[PortalPacientes] window.location.href =', window.location.href);
+console.log('[PortalPacientes] window.location.search =', window.location.search);
+console.log('[PortalPacientes] clinica_id en la URL =', CLINICA_ID_URL);
+console.log('[PortalPacientes] paciente_clinica_id en localStorage =', localStorage.getItem('paciente_clinica_id'));
+console.log('[PortalPacientes] CLINICA_ID final =', CLINICA_ID);
+const { createClient } = supabase;
+const db = createClient(SURL, SKEY, {
+  db: { schema: 'sistema_clinica_v2' },
+  global: { headers: { 'Accept-Profile':'sistema_clinica_v2','Content-Profile':'sistema_clinica_v2' } }
+});
+
+const T = {
+  p:'#1A56A0', dk:'#123D74', ac:'#5B85C2',
+  lt:'#EAF1FB', bg:'#F6F9FD',
+  hd:'linear-gradient(145deg,#EAF1FB 0%,#F6F9FD 50%,#DCE6F5 100%)',
+  gr:'linear-gradient(135deg,#1A56A0,#5B85C2)',
+  sh:'0 4px 14px rgba(26,86,160,.3)'
+};
+
+let view='login', pac=null, citas=[], notifs=[], medicos=[], historial=[], recetas=[], examenes=[];
+// Nombre/teléfono reales de la clínica para el header de Login/Crear Cuenta
+// — se cargan en init() antes del primer render (fallback mientras carga o
+// si falla la consulta).
+let clinicaInfo = { nombre:'SyscobfactCLINIC', telefono:'' };
+
+async function cargarClinicaInfo(){
+  if(!CLINICA_ID) return;
+  try{
+    const {data,error}=await db.from('clinicas').select('nombre, telefono').eq('id',CLINICA_ID).single();
+    if(error){console.error(error);return;}
+    if(data) clinicaInfo = { nombre:data.nombre||clinicaInfo.nombre, telefono:data.telefono||'' };
+  }catch(e){console.error(e);}
+}
+
+function fl(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function ff(f){if(!f)return'---';return new Date(f+'T12:00:00').toLocaleDateString('es-PA',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+function ffc(f){if(!f)return'---';return new Date(f+'T12:00:00').toLocaleDateString('es-PA',{weekday:'short',day:'numeric',month:'short'});}
+function sal(){const h=new Date().getHours();return h<12?'Buenos dias':h<19?'Buenas tardes':'Buenas noches';}
+function fah(){return new Date().toLocaleDateString('es-PA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
+
+// SHA-256 vía Web Crypto (nativo del navegador) — mismo helper que
+// Login/index.html y Register/index.html, así el hash se calcula igual en
+// toda la app. v1 no hasheaba acá: la comparación de contraseña la hacía
+// una RPC de Postgres (autenticar_paciente) que no existe en v2 — acá se
+// compara el hash directo contra pacientes.password, mismo patrón que
+// usuarios_clinica.
+async function sha256Hex(texto) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function toast(msg,type){
+  let t=document.getElementById('_toast');
+  if(!t){t=document.createElement('div');t.id='_toast';t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);color:#fff;padding:14px 24px;border-radius:12px;font-size:.78rem;font-weight:600;z-index:9999;transition:transform .3s;box-shadow:0 4px 16px rgba(0,0,0,.2);max-width:90vw;text-align:center';document.body.appendChild(t);}
+  t.style.background=type==='err'?'#dc2626':T.gr;
+  t.textContent=msg;
+  t.style.transform='translateX(-50%) translateY(0)';
+  setTimeout(()=>{t.style.transform='translateX(-50%) translateY(120px)';},3200);
+}
+
+function pw(a,b){const i=document.getElementById(a),bt=document.getElementById(b);if(i.type==='password'){i.type='text';bt.textContent='👁️';}else{i.type='password';bt.textContent='👁️‍🗨️';}}
+function go(v){view=v;render();}
+function logout(){
+  localStorage.removeItem('paciente_clinica_id');
+  localStorage.removeItem('paciente_id');
+  localStorage.removeItem('paciente_nombre');
+  localStorage.removeItem('paciente_cedula');
+  localStorage.removeItem('paciente_email');
+  localStorage.removeItem('paciente_tipo');
+  CLINICA_ID=CLINICA_ID_URL;view='login';pac=null;citas=[];notifs=[];render();
+}
+
+async function cargar(){
+  const id=localStorage.getItem('paciente_id');if(!id)return;
+  try{
+    const {data:p}=await db.from('pacientes').select('*').eq('id',id).single();
+    if(p)pac=p;
+    const {data:c}=await db.from('citas').select('*').eq('paciente_id',id).eq('clinica_id',CLINICA_ID).order('fecha',{ascending:true});
+    citas=c||[];
+    const {data:n}=await db.from('notificaciones').select('*').eq('clinica_id',CLINICA_ID).eq('leida',false).order('created_at',{ascending:false});
+    notifs=n||[];
+    const {data:m}=await db.from('medicos').select('*').eq('clinica_id',CLINICA_ID).eq('estado','activo');
+    medicos=m||[];
+    // Mi Historial / Mis Recetas / Mis Exámenes — tablas reales confirmadas:
+    // historial_clinico, recetas, examenes (examenes_medicos NO existe).
+    const {data:h}=await db.from('historial_clinico').select('*').eq('paciente_id',id).eq('clinica_id',CLINICA_ID).order('fecha',{ascending:false});
+    historial=h||[];
+    const {data:r}=await db.from('recetas').select('*').eq('paciente_id',id).eq('clinica_id',CLINICA_ID).order('fecha',{ascending:false});
+    recetas=r||[];
+    const {data:ex}=await db.from('examenes').select('*').eq('paciente_id',id).eq('clinica_id',CLINICA_ID).order('fecha',{ascending:false});
+    examenes=ex||[];
+  }catch(e){console.error(e);}
+}
+
+function nombreMedico(medicoId, nombreManual){
+  const m=medicos.find(x=>x.id===medicoId);
+  return m?m.nombre_completo:(nombreManual||'---');
+}
+
+// Formato de cédula panameña — mismo regex que V.cedula en Dashboard/
+// index.html (natural, extranjero PE-/E-, naturalizado N-, jurídico), para
+// que la validación sea consistente en todo v2.
+const RE_CEDULA = /^((PE|E|N)-)?\d{1,2}-\d{1,4}-\d{1,6}$|^\d{6,10}-\d{1,2}-\d{4}$/i;
+
+function calcularEdad(fechaNac){
+  if(!fechaNac) return null;
+  const hoy=new Date(); const nac=new Date(fechaNac);
+  let edad=hoy.getFullYear()-nac.getFullYear();
+  const m=hoy.getMonth()-nac.getMonth();
+  if(m<0||(m===0&&hoy.getDate()<nac.getDate()))edad--;
+  return edad;
+}
+function actualizarEdadRegistro(){
+  const campo=document.getElementById('redad');
+  if(!campo)return;
+  const edad=calcularEdad(document.getElementById('rfna')?.value);
+  campo.value=(edad!==null&&edad>=0)?edad+' años':'';
+}
+
+// Guarda la sesión con prefijo paciente_ — exactamente las 6 claves
+// pedidas, sin paciente_rol (a diferencia de Login/index.html, este portal
+// solo tiene un tipo de sesión, no necesita distinguirlo por rol).
+function guardarSesion(p){
+  localStorage.setItem('paciente_clinica_id',p.clinica_id);
+  localStorage.setItem('paciente_id',p.id);
+  localStorage.setItem('paciente_nombre',p.nombre_completo);
+  localStorage.setItem('paciente_cedula',p.cedula||'');
+  localStorage.setItem('paciente_email',p.email||'');
+  localStorage.setItem('paciente_tipo','paciente');
+  CLINICA_ID=p.clinica_id;
+}
+
+// Login con cédula + contraseña contra la tabla pacientes directamente.
+// Acotado a CLINICA_ID (viene del link que le dio la clínica al paciente,
+// nunca de una selección manual) — así una cédula de prueba repetida en
+// dos clínicas distintas nunca matchea la incorrecta.
+async function login(e){
+  e.preventDefault();
+  const ced=document.getElementById('lced').value.trim();
+  const pw2=document.getElementById('lpw').value;
+  const err=document.getElementById('lerr');
+  const btn=document.getElementById('lbtn');
+  if(!ced||!pw2){err.textContent='Complete todos los campos';err.style.display='block';return;}
+  btn.disabled=true;btn.innerHTML='<div class="spinner" style="border-top-color:#fff"></div> Verificando...';err.style.display='none';
+  try{
+    const passwordHash=await sha256Hex(pw2);
+    const {data:p,error}=await db.from('pacientes').select('*')
+      .eq('clinica_id',CLINICA_ID).eq('cedula',ced).eq('password',passwordHash).eq('estado','activo').maybeSingle();
+    if(error){err.textContent=error.message;err.style.display='block';return;}
+    if(!p){err.textContent='Cédula o contraseña incorrectos.';err.style.display='block';return;}
+    guardarSesion(p);
+    await cargar();
+    toast('Bienvenido/a '+p.nombre_completo);
+    go('dash');
+  }catch(er){err.textContent='Error al iniciar sesion';err.style.display='block';}
+  finally{btn.disabled=false;btn.innerHTML='🔐 Iniciar Sesión';}
+}
+
+// Crear cuenta — auto-registro: crea la fila del paciente directamente
+// desde el portal (a diferencia del intento anterior, que solo activaba un
+// paciente ya dado de alta por la clínica). Bloquea cédulas duplicadas
+// dentro de la misma clínica y loguea automático al terminar.
+async function crearCuenta(e){
+  e.preventDefault();
+  const err=document.getElementById('rerr');
+  const btn=document.getElementById('rbtn');
+  const nom=document.getElementById('rnom').value.trim();
+  const ced=document.getElementById('rced').value.trim();
+  const fna=document.getElementById('rfna').value;
+  const tel=document.getElementById('rtel').value.trim();
+  const eml=document.getElementById('reml').value.trim().toLowerCase();
+  const pw1=document.getElementById('rpw1').value;
+  const pw2=document.getElementById('rpw2').value;
+
+  if(!nom||!ced||!fna||!pw1||!pw2){err.textContent='Complete los campos obligatorios';err.style.display='block';return;}
+  if(!RE_CEDULA.test(ced)){err.textContent='Formato de cédula inválido. Ej: 8-294-126, PE-8-294-126, N-8-294-126';err.style.display='block';return;}
+  if(pw1!==pw2){err.textContent='Las contraseñas no coinciden';err.style.display='block';return;}
+  if(pw1.length<6){err.textContent='Mínimo 6 caracteres';err.style.display='block';return;}
+
+  btn.disabled=true;btn.innerHTML='<div class="spinner" style="border-top-color:#fff"></div> Registrando...';err.style.display='none';
+  try{
+    const {data:existente,error:errBusq}=await db.from('pacientes').select('id')
+      .eq('clinica_id',CLINICA_ID).eq('cedula',ced).maybeSingle();
+    if(errBusq){err.textContent=errBusq.message;err.style.display='block';return;}
+    if(existente){err.textContent='Esta cédula ya tiene una cuenta registrada.';err.style.display='block';return;}
+
+    const edad=calcularEdad(fna);
+    const passwordHash=await sha256Hex(pw1);
+    const {data:nuevo,error:errIns}=await db.from('pacientes').insert([{
+      clinica_id:CLINICA_ID,
+      nombre_completo:nom,
+      cedula:ced,
+      fecha_nacimiento:fna,
+      edad,
+      telefono:tel||null,
+      email:eml||null,
+      password:passwordHash,
+      estado:'activo',
+      genero:null,
+      tipo_sangre:null,
+    }]).select().single();
+    if(errIns){err.textContent=errIns.message;err.style.display='block';return;}
+
+    guardarSesion(nuevo);
+    await cargar();
+    toast('Cuenta creada. Bienvenido/a '+nuevo.nombre_completo);
+    go('dash');
+  }catch(er){err.textContent='Error: '+er.message;err.style.display='block';}
+  finally{btn.disabled=false;btn.innerHTML='Crear Cuenta';}
+}
+
+async function marcarLeida(id){
+  await db.from('notificaciones').update({leida:true}).eq('id',id);
+  notifs=notifs.filter(n=>n.id!==id);render();
+}
+
+function rLogin(){
+  return `<div class="auth-wrap"><div class="auth-inner">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">🏥</div>
+      <h1>${clinicaInfo.nombre}</h1>
+      <p>Portal del Paciente</p>
+    </div>
+    <h2>Bienvenido</h2>
+    <p class="sub">Ingrese con su cédula y contraseña</p>
+    <div id="lerr" class="auth-alert" style="display:none"></div>
+    <form onsubmit="login(event)">
+      <div class="auth-field">
+        <label for="lced">Cédula *</label>
+        <input type="text" id="lced" placeholder="Ej: 8-294-126" required>
+      </div>
+      <div class="auth-field">
+        <label for="lpw">Contraseña *</label>
+        <div class="pw-wrap">
+          <input type="password" id="lpw" placeholder="••••••••" required style="padding-right:48px">
+          <button type="button" class="pw-btn" id="tgl" onclick="pw('lpw','tgl')">👁️‍🗨️</button>
+        </div>
+      </div>
+      <button type="submit" id="lbtn" class="auth-btn">🔐 Iniciar Sesión</button>
+    </form>
+    <p class="auth-foot">¿Primera vez? <a href="#" onclick="go('registro');return false;">Regístrate aquí</a></p>
+  </div>
+  </div></div>`;
+}
+
+function rRegistro(){
+  return `<div class="auth-wrap"><div class="auth-inner">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">🏥</div>
+      <h1>${clinicaInfo.nombre}</h1>
+      <p>Portal del Paciente</p>
+    </div>
+    <h2>Crear Cuenta</h2>
+    <p class="sub">Completa tus datos para registrarte</p>
+    <div id="rerr" class="auth-alert" style="display:none"></div>
+    <form onsubmit="crearCuenta(event)">
+      <div class="auth-field">
+        <label for="rnom">Nombre Completo *</label>
+        <input type="text" id="rnom" placeholder="Ej: Juan Pérez" required>
+      </div>
+      <div class="auth-field">
+        <label for="rced">Cédula *</label>
+        <input type="text" id="rced" placeholder="Ej: 8-294-126" required>
+      </div>
+      <div class="auth-field">
+        <label for="rfna">Fecha de Nacimiento *</label>
+        <input type="date" id="rfna" required oninput="actualizarEdadRegistro()" onchange="actualizarEdadRegistro()">
+      </div>
+      <div class="auth-field">
+        <label for="redad">Edad</label>
+        <input type="text" id="redad" readonly placeholder="Se calcula automático">
+      </div>
+      <div class="auth-field">
+        <label for="rtel">Teléfono (opcional)</label>
+        <input type="tel" id="rtel" placeholder="Ej: 6942-5102">
+      </div>
+      <div class="auth-field">
+        <label for="reml">Email (opcional)</label>
+        <input type="email" id="reml" placeholder="Ej: juan@email.com">
+      </div>
+      <div class="auth-field">
+        <label for="rpw1">Contraseña * <span style="font-weight:400;color:var(--text2)">(mín. 6 caracteres)</span></label>
+        <div class="pw-wrap"><input type="password" id="rpw1" placeholder="••••••••" required minlength="6" style="padding-right:48px"><button type="button" class="pw-btn" id="tglr1" onclick="pw('rpw1','tglr1')">👁️‍🗨️</button></div>
+      </div>
+      <div class="auth-field">
+        <label for="rpw2">Confirmar Contraseña *</label>
+        <div class="pw-wrap"><input type="password" id="rpw2" placeholder="••••••••" required minlength="6" style="padding-right:48px"><button type="button" class="pw-btn" id="tglr2" onclick="pw('rpw2','tglr2')">👁️‍🗨️</button></div>
+      </div>
+      <button type="submit" id="rbtn" class="auth-btn">Crear Cuenta</button>
+    </form>
+    <p class="auth-foot">¿Ya tienes cuenta? <a href="#" onclick="go('login');return false;">Inicia sesión</a></p>
+  </div>
+  </div></div>`;
+}
+
+// Barra inferior compartida por las 5 secciones principales (Inicio, Mis
+// Citas, Mi Historial, Mis Recetas, Mis Exámenes) — "Avisos" ya no vive acá
+// (sigue accesible desde la campanita del header), esto es solo lo pedido.
+function navInferior(activa){
+  const item=(v,icono,label)=>`<button onclick="go('${v}')" style="display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;padding:4px 0">
+    <span style="font-size:1.05rem">${icono}</span>
+    <span style="font-size:.58rem;font-weight:${activa===v?'700':'500'};color:${activa===v?T.p:'#9ca3af'}">${label}</span>
+  </button>`;
+  return `<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid ${T.lt};padding:10px 8px;box-shadow:0 -4px 16px rgba(26,86,160,.08)">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:2px;max-width:460px;margin:0 auto">
+      ${item('dash','🏠','Inicio')}
+      ${item('citas','📅','Mis Citas')}
+      ${item('historial','📋','Mi Historial')}
+      ${item('recetas','💊','Mis Recetas')}
+      ${item('examenes','🔬','Mis Exámenes')}
+    </div>
+  </div>`;
+}
+
+// Header compartido por las 5 secciones — logo/nombre de la clínica,
+// botón de llamada (tel: con clinicas.telefono, solo si hay teléfono
+// cargado), campanita de avisos y Salir.
+function headerPortal(){
+  const nl=notifs.length;
+  return `<div style="background:${T.hd};padding:20px 20px 20px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(91,133,194,.12);pointer-events:none"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;background:${T.gr};border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.8rem">🏥</div>
+        <span style="font-size:.8rem;font-weight:700;color:${T.dk}">${clinicaInfo.nombre}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${clinicaInfo.telefono?`<a href="tel:${clinicaInfo.telefono}" title="Llamar a la clínica" style="width:36px;height:36px;background:rgba(255,255,255,.7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;text-decoration:none">📞</a>`:''}
+        ${nl>0?`<div style="position:relative;cursor:pointer" onclick="go('notifs')"><div style="width:36px;height:36px;background:rgba(255,255,255,.7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem">🔔</div><div style="position:absolute;top:-4px;right:-4px;background:#f43f5e;color:#fff;font-size:.6rem;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid ${T.bg}">${nl}</div></div>`:''}
+        <button onclick="logout()" style="padding:7px 12px;background:rgba(0,0,0,.07);border:none;border-radius:8px;cursor:pointer;font-size:.7rem;font-weight:600;color:#475569;position:relative;z-index:1">Salir</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function rDash(){
+  if(!pac)return`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center"><div class="spinner"></div></div>`;
+  const nom=pac.nombre_completo||'Paciente';
+  return `<div style="min-height:100vh;background:${T.bg};padding-bottom:100px">
+  ${headerPortal()}
+  <div style="padding:20px">
+    <div style="background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(26,86,160,.1);padding:16px;display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="width:46px;height:46px;background:${T.gr};border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:${T.sh};font-size:1.4rem">👤</div>
+      <div>
+        <p style="font-size:.7rem;font-weight:600;color:${T.dk}">${sal()}</p>
+        <p style="font-size:.92rem;font-weight:700;color:#1e293b">${nom}</p>
+        <p style="font-size:.7rem;color:#64748b">Cedula: ${pac.cedula||'---'}</p>
+      </div>
+    </div>
+    ${notifs.length>0?`<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:16px;border-left:4px solid ${T.p};box-shadow:0 2px 8px rgba(26,86,160,.1);cursor:pointer" onclick="go('notifs')"><div style="font-size:.65rem;font-weight:700;color:${T.p};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">🔔 Mensaje de su clinica</div><div style="font-size:.82rem;font-weight:600;color:#1e293b">${notifs[0].titulo}</div><div style="font-size:.72rem;color:#64748b;margin-top:3px">${(notifs[0].mensaje||'').substring(0,80)}...</div></div>`:''}
+  </div>
+  ${navInferior('dash')}
+  </div>`;
+}
+
+function rMisCitas(){
+  const prox=citas.filter(c=>c.estado!=='atendida'&&c.estado!=='cancelada');
+  const atend=citas.filter(c=>c.estado==='atendida');
+  return `<div style="min-height:100vh;background:${T.bg};padding-bottom:100px">
+  ${headerPortal()}
+  <div style="padding:20px">
+    <h1 style="font-size:1.15rem;font-weight:700;color:#1e293b;margin-bottom:2px">📅 Mis Citas</h1>
+    <p style="font-size:.75rem;color:#64748b;margin-bottom:16px">Historial de citas en la clínica</p>
+    ${citas.length===0?`<div style="background:#fff;border-radius:14px;padding:20px;text-align:center;border:1.5px dashed ${T.lt}"><p style="color:#94a3b8;font-size:.82rem">No tienes citas registradas</p></div>`:''}
+    ${prox.length>0?`<p style="font-size:.85rem;font-weight:700;color:#1e293b;margin-bottom:10px">Próximas</p>${prox.map(c=>{
+      const md=medicos.find(m=>m.id===c.medico_id);
+      const ec=c.estado==='confirmada'?'#5B85C2':'#f59e0b';
+      const el=c.estado==='confirmada'?'Confirmada':'Pendiente';
+      return `<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border-left:4px solid ${ec};box-shadow:0 2px 8px rgba(26,86,160,.08)"><div style="display:flex;align-items:flex-start;justify-content:space-between"><div><div style="font-weight:700;color:#1e293b;font-size:.85rem;margin-bottom:6px">📅 ${ff(c.fecha)}</div><div style="font-size:.78rem;color:#475569;margin-bottom:4px">🕐 ${c.hora}</div><div style="font-size:.72rem;color:#64748b">🩺 ${md?md.nombre_completo:'---'}</div>${c.motivo?`<div style="font-size:.7rem;color:#94a3b8;margin-top:3px">📝 ${c.motivo}</div>`:''}</div><span style="background:${c.estado==='confirmada'?'#DCE6F5':'#fef9c3'};color:${ec};padding:3px 10px;border-radius:20px;font-size:.68rem;font-weight:700;white-space:nowrap">${el}</span></div></div>`;}).join('')}`:''}
+    ${atend.length>0?`<p style="font-size:.85rem;font-weight:700;color:#1e293b;margin-bottom:10px;margin-top:8px">Atendidas</p>${atend.map(c=>`<div style="background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;opacity:.75;border-left:4px solid #94a3b8"><div style="font-size:.82rem;color:#475569;font-weight:600">${ff(c.fecha)}</div><div style="font-size:.72rem;color:#94a3b8;margin-top:3px">${c.motivo||'Consulta'}</div><span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:700;margin-top:6px;display:inline-block">🩺 Atendida</span></div>`).join('')}`:''}
+  </div>
+  ${navInferior('citas')}
+  </div>`;
+}
+
+function rMiHistorial(){
+  return `<div style="min-height:100vh;background:${T.bg};padding-bottom:100px">
+  ${headerPortal()}
+  <div style="padding:20px">
+    <h1 style="font-size:1.15rem;font-weight:700;color:#1e293b;margin-bottom:2px">📋 Mi Historial</h1>
+    <p style="font-size:.75rem;color:#64748b;margin-bottom:16px">Consultas y diagnósticos registrados</p>
+    ${historial.length===0?`<div style="background:#fff;border-radius:14px;padding:20px;text-align:center;border:1.5px dashed ${T.lt}"><p style="color:#94a3b8;font-size:.82rem">Sin historial clínico registrado</p></div>`
+    :historial.map(h=>{
+      const signos=[h.peso?`Peso: ${h.peso} kg`:'',h.estatura?`Estatura: ${h.estatura} m`:'',h.presion?`Presión: ${h.presion}`:'',h.temperatura?`Temp: ${h.temperatura}°C`:''].filter(Boolean).join(' · ');
+      return `<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border-left:4px solid ${T.p};box-shadow:0 2px 8px rgba(26,86,160,.08)">
+        <div style="font-weight:700;color:#1e293b;font-size:.85rem;margin-bottom:4px">📅 ${ff(h.fecha)}</div>
+        <div style="font-size:.72rem;color:#64748b;margin-bottom:8px">🩺 ${nombreMedico(h.medico_id,h.medico_nombre_manual)}</div>
+        ${h.diagnostico?`<div style="font-size:.78rem;color:#1e293b;margin-bottom:4px"><strong>Diagnóstico:</strong> ${h.diagnostico}</div>`:''}
+        ${h.tratamiento?`<div style="font-size:.78rem;color:#475569;margin-bottom:4px"><strong>Tratamiento:</strong> ${h.tratamiento}</div>`:''}
+        ${h.sintomas?`<div style="font-size:.75rem;color:#64748b;margin-bottom:4px"><strong>Síntomas:</strong> ${h.sintomas}</div>`:''}
+        ${h.observaciones?`<div style="font-size:.75rem;color:#64748b;margin-bottom:4px">${h.observaciones}</div>`:''}
+        ${signos?`<div style="font-size:.68rem;color:#94a3b8;margin-top:6px;padding-top:6px;border-top:1px solid ${T.lt}">${signos}</div>`:''}
+      </div>`;}).join('')}
+  </div>
+  ${navInferior('historial')}
+  </div>`;
+}
+
+function rMisRecetas(){
+  return `<div style="min-height:100vh;background:${T.bg};padding-bottom:100px">
+  ${headerPortal()}
+  <div style="padding:20px">
+    <h1 style="font-size:1.15rem;font-weight:700;color:#1e293b;margin-bottom:2px">💊 Mis Recetas</h1>
+    <p style="font-size:.75rem;color:#64748b;margin-bottom:16px">Medicamentos recetados por tu médico</p>
+    ${recetas.length===0?`<div style="background:#fff;border-radius:14px;padding:20px;text-align:center;border:1.5px dashed ${T.lt}"><p style="color:#94a3b8;font-size:.82rem">Sin recetas registradas</p></div>`
+    :recetas.map(r=>`<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border-left:4px solid ${T.p};box-shadow:0 2px 8px rgba(26,86,160,.08)">
+      <div style="font-weight:700;color:#1e293b;font-size:.88rem;margin-bottom:4px">💊 ${r.medicamento}</div>
+      <div style="font-size:.78rem;color:#475569;margin-bottom:4px">${r.dosis||'---'} · ${r.frecuencia||'---'}</div>
+      <div style="font-size:.7rem;color:#64748b">📅 ${ff(r.fecha)} · 🩺 ${nombreMedico(r.medico_id)}</div>
+    </div>`).join('')}
+  </div>
+  ${navInferior('recetas')}
+  </div>`;
+}
+
+function rMisExamenes(){
+  return `<div style="min-height:100vh;background:${T.bg};padding-bottom:100px">
+  ${headerPortal()}
+  <div style="padding:20px">
+    <h1 style="font-size:1.15rem;font-weight:700;color:#1e293b;margin-bottom:2px">🔬 Mis Exámenes</h1>
+    <p style="font-size:.75rem;color:#64748b;margin-bottom:16px">Exámenes solicitados y resultados</p>
+    ${examenes.length===0?`<div style="background:#fff;border-radius:14px;padding:20px;text-align:center;border:1.5px dashed ${T.lt}"><p style="color:#94a3b8;font-size:.82rem">Sin exámenes registrados</p></div>`
+    :examenes.map(e=>`<div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border-left:4px solid ${T.p};box-shadow:0 2px 8px rgba(26,86,160,.08)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
+        <div style="font-weight:700;color:#1e293b;font-size:.85rem">🔬 ${e.tipo}</div>
+        <span style="background:${e.resultado_texto?'#DCE6F5':'#fef9c3'};color:${e.resultado_texto?T.p:'#f59e0b'};padding:3px 10px;border-radius:20px;font-size:.65rem;font-weight:700;white-space:nowrap">${e.resultado_texto?'Completado':'Pendiente'}</span>
+      </div>
+      <div style="font-size:.7rem;color:#64748b;margin-bottom:6px">📅 ${ff(e.fecha)} · 🩺 ${nombreMedico(e.medico_id)}</div>
+      ${e.resultado_texto?`<div style="font-size:.75rem;color:#475569;margin-bottom:4px">${e.resultado_texto}</div>`:''}
+      ${e.interpretacion?`<div style="font-size:.75rem;color:#1e293b"><strong>Interpretación:</strong> ${e.interpretacion}</div>`:''}
+    </div>`).join('')}
+  </div>
+  ${navInferior('examenes')}
+  </div>`;
+}
+
+function rNotifs(){
+  return `<div style="min-height:100vh;background:${T.bg}">
+  <div style="background:${T.hd};padding:20px">
+    <button onclick="go('dash')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;margin-bottom:12px"><span style="font-size:1.2rem">‹</span><span style="font-size:.85rem;color:#475569;font-weight:600">Volver</span></button>
+    <h1 style="font-size:1.2rem;font-weight:700;color:#1e293b">🔔 Avisos de la Clinica</h1>
+  </div>
+  <div style="padding:20px">
+    ${notifs.length>0?notifs.map(n=>`<div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;border-left:4px solid ${T.p};box-shadow:0 2px 8px rgba(26,86,160,.08)"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="flex:1"><div style="font-size:.82rem;font-weight:700;color:#1e293b;margin-bottom:6px">${n.titulo}</div><div style="font-size:.78rem;color:#475569;line-height:1.5">${n.mensaje}</div><div style="font-size:.65rem;color:#94a3b8;margin-top:8px">${new Date(n.created_at).toLocaleDateString('es-PA',{day:'2-digit',month:'long',year:'numeric'})}</div></div><button onclick="marcarLeida('${n.id}')" style="background:${T.lt};color:${T.dk};border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.68rem;font-weight:700;white-space:nowrap;flex-shrink:0">Leido</button></div></div>`).join('')
+    :`<div style="background:#fff;border-radius:14px;padding:30px;text-align:center"><div style="font-size:2rem;margin-bottom:10px">🔔</div><p style="color:#94a3b8;font-size:.85rem">Sin avisos nuevos</p><p style="color:#64748b;font-size:.78rem;margin-top:4px">Aqui apareceran los mensajes de su clinica</p></div>`}
+  </div></div>`;
+}
+
+// Sin clinica_id (ni de la URL ni de una sesión ya guardada) no hay forma
+// segura de saber a qué clínica pertenece el paciente — acá no hay
+// selector manual a propósito (el link que da la clínica es la única
+// fuente), así que se bloquea con un mensaje claro en vez de mostrar un
+// login que fallaría igual.
+function rSinClinica(){
+  return `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:${T.hd};text-align:center">
+  <div style="background:#fff;border-radius:24px;box-shadow:0 16px 48px rgba(26,86,160,.15);max-width:400px;padding:36px">
+    <div style="font-size:2.4rem;margin-bottom:14px">🔗</div>
+    <h1 style="font-size:1.15rem;font-weight:700;color:#1e293b;margin-bottom:8px">Enlace incompleto</h1>
+    <p style="color:#64748b;font-size:.85rem;line-height:1.6">Este portal se abre con el enlace que te entrega tu clínica — no es posible ingresar sin él. Si no lo tenés a mano, solicítalo directamente en tu clínica.</p>
+  </div></div>`;
+}
+
+function render(){
+  const app=document.getElementById('app');
+  if(!CLINICA_ID){app.innerHTML=rSinClinica();return;}
+  switch(view){
+    case 'login':     app.innerHTML=rLogin();      break;
+    case 'registro':  app.innerHTML=rRegistro();   break;
+    case 'dash':      app.innerHTML=rDash();       break;
+    case 'citas':     app.innerHTML=rMisCitas();   break;
+    case 'historial': app.innerHTML=rMiHistorial();break;
+    case 'recetas':   app.innerHTML=rMisRecetas(); break;
+    case 'examenes':  app.innerHTML=rMisExamenes();break;
+    case 'notifs':    app.innerHTML=rNotifs();     break;
+    default:          app.innerHTML=rLogin();
+  }
+}
+
+async function init(){
+  await cargarClinicaInfo();
+  const id=localStorage.getItem('paciente_id');
+  if(id && CLINICA_ID){await cargar();go('dash');}
+  else go('login');
+}
+init();
+</script>
+</body>
+</html>
