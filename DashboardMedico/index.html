@@ -260,7 +260,7 @@ td{padding:11px 14px;font-size:.78rem;color:#475569;border-bottom:1px solid #F6F
 // ════ CONFIGURACIÓN SUPABASE ══════════════════════════════
 const SUPABASE_URL = 'https://jhprliiconsmqqvtkvpo.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHJsaWljb25zbXFxdnRrdnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTYzOTYsImV4cCI6MjA4NTc5MjM5Nn0.bTF1uIgUnWXD_-J5JAhCdTJ6nTA7lkLtLMgFoG50NEI';
-let CLINICA_ID = localStorage.getItem('medico_clinica_id');
+let CLINICA_ID = sessionStorage.getItem('medico_clinica_id');
 
 const { createClient } = supabase;
 
@@ -484,11 +484,11 @@ async function cargarDatos() {
 }
 
 function logout() {
-  localStorage.removeItem('medico_clinica_id');
-  localStorage.removeItem('medico_nombre');
-  localStorage.removeItem('medico_email');
-  localStorage.removeItem('medico_rol');
-  localStorage.removeItem('medico_tipo');
+  sessionStorage.removeItem('medico_clinica_id');
+  sessionStorage.removeItem('medico_nombre');
+  sessionStorage.removeItem('medico_email');
+  sessionStorage.removeItem('medico_rol');
+  sessionStorage.removeItem('medico_tipo');
   window.location.replace('../Login/index.html');
 }
 
@@ -497,11 +497,11 @@ function logout() {
 // ════════════════════════════════════════════════════════════
 
 // El único dato de género disponible es el prefijo "Dr./Dra." que el propio
-// médico trae en localStorage.getItem('medico_nombre') (no hay columna de
+// médico trae en sessionStorage.getItem('medico_nombre') (no hay columna de
 // género en `medicos`) — si no viene con ese prefijo no hay forma de saber
 // el género, así que cae al saludo neutro "Bienvenido/a".
 function saludoMedico() {
-  const nombre = (localStorage.getItem('medico_nombre') || currentUser?.name || '').trim();
+  const nombre = (sessionStorage.getItem('medico_nombre') || currentUser?.name || '').trim();
   if (!nombre) return 'Bienvenido/a 👋';
 
   const dra = nombre.match(/^dra\.?\s+/i);
@@ -2568,16 +2568,21 @@ async function guardarIncapacidadMedico() {
 }
 
 (async function bootSesion() {
-  // Claves con prefijo medico_ — propias de este archivo, nunca tocadas por
-  // Dashboard/index.html (que usa admin_*). Ver el comentario equivalente
-  // en Dashboard/index.html: antes ambos archivos compartían las mismas
-  // claves de localStorage (mismo bucket file://), así que loguearse en uno
-  // pisaba la sesión del otro si estaban abiertos al mismo tiempo.
-  const savedClinicaId = localStorage.getItem('medico_clinica_id');
-  const savedNombre    = localStorage.getItem('medico_nombre');
-  const savedEmail     = localStorage.getItem('medico_email');
-  const savedRol       = localStorage.getItem('medico_rol');
-  const tipoDashboard  = localStorage.getItem('medico_tipo');
+  // Claves con prefijo medico_ EN sessionStorage — propias de este archivo,
+  // nunca tocadas por Dashboard/index.html (que usa admin_*). Ver el
+  // comentario equivalente en Dashboard/index.html: el prefijo por rol ya
+  // evitaba que un admin pisara la sesión de un médico (y viceversa), pero
+  // con localStorage dos MÉDICOS de clínicas distintas (mismo rol, mismo
+  // prefijo) sí podían pisarse la sesión entre pestañas — un F5 después de
+  // que otro médico se logueara en otra pestaña hacía cargar los datos de
+  // la clínica equivocada. sessionStorage (exclusivo de cada pestaña)
+  // corrige esa fuga; el costo es que la sesión no sobrevive a cerrar la
+  // pestaña.
+  const savedClinicaId = sessionStorage.getItem('medico_clinica_id');
+  const savedNombre    = sessionStorage.getItem('medico_nombre');
+  const savedEmail     = sessionStorage.getItem('medico_email');
+  const savedRol       = sessionStorage.getItem('medico_rol');
+  const tipoDashboard  = sessionStorage.getItem('medico_tipo');
 
   const tipoDashboardValido = !tipoDashboard || tipoDashboard === 'medico';
 
@@ -2586,7 +2591,7 @@ async function guardarIncapacidadMedico() {
     return;
   }
 
-  localStorage.setItem('medico_tipo', 'medico');
+  sessionStorage.setItem('medico_tipo', 'medico');
   CLINICA_ID  = savedClinicaId;
   currentUser = { role: savedRol, name: savedNombre, id: null };
 
@@ -2594,7 +2599,7 @@ async function guardarIncapacidadMedico() {
   document.getElementById('sbMedNombre').textContent = savedNombre;
 
   // Nombre real de la clínica en el header — se lee de Supabase usando
-  // CLINICA_ID (viene de localStorage.medico_clinica_id, ya resuelto arriba).
+  // CLINICA_ID (viene de sessionStorage.medico_clinica_id, ya resuelto arriba).
   db.from('clinicas').select('nombre').eq('id', CLINICA_ID).single()
     .then(({ data: clin }) => {
       if (clin?.nombre) document.getElementById('topbarMedicoClinicaNombre').textContent = clin.nombre;

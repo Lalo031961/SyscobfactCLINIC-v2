@@ -294,11 +294,12 @@ const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 // CUALQUIER clínica. CLINICA_ID no se conoce hasta después del login (se
 // resuelve leyendo usuarios_clinica.clinica_id de la fila que matchea
 // email + contraseña) — antes de eso queda null, estado normal (no un
-// error). Se guarda en sessionStorage (no localStorage) junto con el
-// resto de la sesión — así, aunque este portal y DashboardMedico/
-// index.html (que sí usa localStorage con prefijo medico_*) estén abiertos
-// al mismo tiempo en el mismo navegador, nunca comparten ni se pisan la
-// sesión: sessionStorage es exclusivo de cada pestaña.
+// error). Se guarda en sessionStorage, con clave medicomovil_* (distinta
+// del medico_* que usa DashboardMedico/index.html — también en
+// sessionStorage desde el fix de la fuga de sesión entre clínicas) — así,
+// aunque este portal y DashboardMedico/index.html estén abiertos al mismo
+// tiempo en el mismo navegador, nunca comparten ni se pisan la sesión:
+// sessionStorage es exclusivo de cada pestaña.
 let CLINICA_ID = sessionStorage.getItem('medicomovil_clinica_id');
 
 const { createClient } = supabase;

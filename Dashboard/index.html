@@ -496,7 +496,7 @@ tr:hover td{background:#F6F9FD}
 // ════ CONFIGURACIÓN SUPABASE ══════════════════════════════
 const SUPABASE_URL = 'https://jhprliiconsmqqvtkvpo.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHJsaWljb25zbXFxdnRrdnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMTYzOTYsImV4cCI6MjA4NTc5MjM5Nn0.bTF1uIgUnWXD_-J5JAhCdTJ6nTA7lkLtLMgFoG50NEI';
-let CLINICA_ID = localStorage.getItem('admin_clinica_id');
+let CLINICA_ID = sessionStorage.getItem('admin_clinica_id');
 
 // ← ESTA LÍNEA ES LA QUE FALTABA
 const { createClient } = supabase;
@@ -1063,14 +1063,17 @@ async function handleLogin() {
       return;
     }
 
-    // 4. Guardar sesión en localStorage (prefijo admin_ — ver arranque más
+    // 4. Guardar sesión en sessionStorage (prefijo admin_ — ver arranque más
     //    abajo) para que la próxima carga entre directo sin pasar por esta
-    //    pantalla.
-    localStorage.setItem('admin_clinica_id', usuario.clinica_id);
-    localStorage.setItem('admin_nombre', usuario.nombre);
-    localStorage.setItem('admin_email', usuario.email);
-    localStorage.setItem('admin_rol', usuario.rol);
-    localStorage.setItem('admin_tipo', 'admin');
+    //    pantalla. sessionStorage (no localStorage): así dos admins de
+    //    clínicas distintas logueados en pestañas distintas del mismo
+    //    navegador nunca se pisan la sesión entre sí — ver el comentario
+    //    equivalente en Login/index.html.
+    sessionStorage.setItem('admin_clinica_id', usuario.clinica_id);
+    sessionStorage.setItem('admin_nombre', usuario.nombre);
+    sessionStorage.setItem('admin_email', usuario.email);
+    sessionStorage.setItem('admin_rol', usuario.rol);
+    sessionStorage.setItem('admin_tipo', 'admin');
 
     // 5. Actualizar último acceso (no bloqueante).
     db.from('usuarios_clinica')
@@ -1098,7 +1101,7 @@ async function handleLogin() {
   }
 }
 
-// ════ ARRANQUE — sesión ya guardada en localStorage ═══════
+// ════ ARRANQUE — sesión ya guardada en sessionStorage ══════
 // <body style="display:none"> en el <head> evita el parpadeo de la
 // pantalla de login vieja (#loginScreen, ya sin uso real — ver Login/
 // index.html) mientras se verifica la sesión: nada se pinta hasta que
@@ -1109,25 +1112,30 @@ async function handleLogin() {
 // login. Si no hay sesión, se redirige de inmediato a Login/index.html
 // sin mostrar nada — el body sigue oculto hasta que la navegación ocurre.
 (async function bootSesion() {
-  // Claves con prefijo admin_ — propias de este archivo, nunca tocadas por
-  // DashboardMedico/index.html (que usa medico_*). Antes ambos archivos
-  // leían/escribían las MISMAS claves (clinica_id, nombre, email, rol,
-  // tipo_dashboard); como Chrome trata todos los file:// como un mismo
-  // origen, compartían el mismo bucket de localStorage — loguearse como
-  // médico en una pestaña pisaba la sesión del admin abierta en otra, y
-  // viceversa ("contenido mezclado"). Con prefijos separados, dos sesiones
-  // simultáneas en pestañas distintas ya no se pisan entre sí.
-  const savedClinicaId = localStorage.getItem('admin_clinica_id');
-  const savedNombre    = localStorage.getItem('admin_nombre');
-  const savedEmail     = localStorage.getItem('admin_email');
-  const savedRol       = localStorage.getItem('admin_rol');
-  const tipoDashboard  = localStorage.getItem('admin_tipo');
+  // Claves con prefijo admin_ EN sessionStorage — propias de este archivo,
+  // nunca tocadas por DashboardMedico/index.html (que usa medico_*), y
+  // exclusivas de esta pestaña (sessionStorage nunca se comparte entre
+  // pestañas, ni siquiera del mismo navegador). Antes se usaba localStorage
+  // con las mismas claves con prefijo: eso evitaba el cruce admin↔médico
+  // ("contenido mezclado", ya corregido antes), pero NO evitaba que dos
+  // ADMINS de clínicas distintas —mismo rol, mismo prefijo— se pisaran la
+  // sesión entre pestañas: loguearse como Clínica B en una pestaña
+  // sobrescribía en silencio las claves admin_* que Clínica A tenía
+  // guardadas, y un F5 en la pestaña de A la hacía cargar los datos de B
+  // (fuga de confidencialidad real entre clínicas). Con sessionStorage esto
+  // ya no puede pasar — el costo es que la sesión no sobrevive a cerrar la
+  // pestaña.
+  const savedClinicaId = sessionStorage.getItem('admin_clinica_id');
+  const savedNombre    = sessionStorage.getItem('admin_nombre');
+  const savedEmail     = sessionStorage.getItem('admin_email');
+  const savedRol       = sessionStorage.getItem('admin_rol');
+  const tipoDashboard  = sessionStorage.getItem('admin_tipo');
 
   const sesionValida = !!(savedClinicaId && savedNombre && savedEmail && savedRol === 'admin');
   const tipoDashboardValido = !tipoDashboard || tipoDashboard === 'admin';
 
   if (sesionValida && tipoDashboardValido) {
-    localStorage.setItem('admin_tipo', 'admin');
+    sessionStorage.setItem('admin_tipo', 'admin');
     CLINICA_ID = savedClinicaId;
     currentUser = { role: savedRol, name: savedNombre, id: null };
     await cargarDatos();
@@ -1173,11 +1181,11 @@ function logout() {
   }
   if (kpiAutoRefreshInterval) { clearInterval(kpiAutoRefreshInterval); kpiAutoRefreshInterval = null; }
   currentUser = { role: null, name: null, id: null };
-  localStorage.removeItem('admin_clinica_id');
-  localStorage.removeItem('admin_nombre');
-  localStorage.removeItem('admin_email');
-  localStorage.removeItem('admin_rol');
-  localStorage.removeItem('admin_tipo');
+  sessionStorage.removeItem('admin_clinica_id');
+  sessionStorage.removeItem('admin_nombre');
+  sessionStorage.removeItem('admin_email');
+  sessionStorage.removeItem('admin_rol');
+  sessionStorage.removeItem('admin_tipo');
   // Redirige a la página real de login de v2 — NO alternar a #loginScreen
   // (esa es la pantalla vieja de v1, basada en Supabase Auth, que quedó
   // en este archivo sin uso real desde que existe Login/index.html).

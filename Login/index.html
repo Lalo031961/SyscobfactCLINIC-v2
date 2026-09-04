@@ -195,21 +195,29 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       return
     }
 
-    // Sesión simple en localStorage (este proyecto no tiene backend propio
+    // Sesión simple en sessionStorage (este proyecto no tiene backend propio
     // ni usa Supabase Auth, todo vive en el cliente) — CON PREFIJO según el
-    // rol (admin_* / medico_*), no claves compartidas. Dashboard/index.html
-    // y DashboardMedico/index.html son archivos file:// distintos pero
-    // comparten el mismo bucket de localStorage del navegador (Chrome no
-    // distingue orígenes file:// por carpeta); con claves compartidas,
-    // loguearse como médico en una pestaña pisaba la sesión del admin en
-    // otra pestaña abierta al mismo tiempo, y viceversa. Con prefijos
-    // separados ambas sesiones conviven sin pisarse.
+    // rol (admin_* / medico_*) Y en sessionStorage, no localStorage.
+    // Dashboard/index.html y DashboardMedico/index.html son archivos file://
+    // distintos pero comparten el mismo bucket de storage del navegador
+    // (Chrome no distingue orígenes file:// por carpeta); el prefijo por rol
+    // evita que un médico pise la sesión de un admin (y viceversa) en otra
+    // pestaña, pero NO evita que DOS admins de clínicas distintas se pisen
+    // entre sí (mismo rol → mismo prefijo). Con localStorage, loguearse como
+    // Clínica B en una pestaña sobrescribía silenciosamente las claves
+    // admin_* que Clínica A tenía guardadas, y un simple F5 en la pestaña de
+    // A la hacía cargar los datos de B — fuga de confidencialidad real entre
+    // clínicas, encontrada y corregida en esta sesión. sessionStorage es
+    // exclusivo de cada pestaña (nunca se comparte con otras, ni siquiera
+    // del mismo navegador), así que ese cruce ya no puede pasar. El costo:
+    // la sesión ya no sobrevive a cerrar la pestaña/navegador — hay que
+    // volver a loguearse cada vez que se abre una pestaña nueva.
     const prefijo = usuario.rol === 'medico' ? 'medico_' : 'admin_'
-    localStorage.setItem(prefijo + 'clinica_id', usuario.clinica_id)
-    localStorage.setItem(prefijo + 'nombre', usuario.nombre)
-    localStorage.setItem(prefijo + 'email', usuario.email)
-    localStorage.setItem(prefijo + 'rol', usuario.rol)
-    localStorage.setItem(prefijo + 'tipo', usuario.rol === 'medico' ? 'medico' : 'admin')
+    sessionStorage.setItem(prefijo + 'clinica_id', usuario.clinica_id)
+    sessionStorage.setItem(prefijo + 'nombre', usuario.nombre)
+    sessionStorage.setItem(prefijo + 'email', usuario.email)
+    sessionStorage.setItem(prefijo + 'rol', usuario.rol)
+    sessionStorage.setItem(prefijo + 'tipo', usuario.rol === 'medico' ? 'medico' : 'admin')
 
     db.from('usuarios_clinica').update({ ultimo_acceso: new Date().toISOString() }).eq('id', usuario.id).then(() => {})
 

@@ -75,7 +75,7 @@ const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 // contraseña) — antes de eso queda null, que es un estado normal (no un
 // error), a diferencia del diseño anterior donde faltar el parámetro
 // bloqueaba el portal entero.
-let CLINICA_ID = localStorage.getItem('paciente_clinica_id');
+let CLINICA_ID = sessionStorage.getItem('paciente_clinica_id');
 const { createClient } = supabase;
 const db = createClient(SURL, SKEY, {
   db: { schema: 'sistema_clinica_v2' },
@@ -135,17 +135,17 @@ function toast(msg,type){
 function pw(a,b){const i=document.getElementById(a),bt=document.getElementById(b);if(i.type==='password'){i.type='text';bt.textContent='👁️';}else{i.type='password';bt.textContent='👁️‍🗨️';}}
 function go(v){view=v;render();}
 function logout(){
-  localStorage.removeItem('paciente_clinica_id');
-  localStorage.removeItem('paciente_id');
-  localStorage.removeItem('paciente_nombre');
-  localStorage.removeItem('paciente_cedula');
-  localStorage.removeItem('paciente_email');
-  localStorage.removeItem('paciente_tipo');
+  sessionStorage.removeItem('paciente_clinica_id');
+  sessionStorage.removeItem('paciente_id');
+  sessionStorage.removeItem('paciente_nombre');
+  sessionStorage.removeItem('paciente_cedula');
+  sessionStorage.removeItem('paciente_email');
+  sessionStorage.removeItem('paciente_tipo');
   CLINICA_ID=null;clinicaInfo={nombre:'SyscobfactCLINIC',telefono:''};view='login';pac=null;citas=[];notifs=[];render();
 }
 
 async function cargar(){
-  const id=localStorage.getItem('paciente_id');if(!id)return;
+  const id=sessionStorage.getItem('paciente_id');if(!id)return;
   try{
     const {data:p}=await db.from('pacientes').select('*').eq('id',id).single();
     if(p)pac=p;
@@ -172,16 +172,22 @@ function nombreMedico(medicoId, nombreManual){
 }
 
 
-// Guarda la sesión con prefijo paciente_ — exactamente las 6 claves
-// pedidas, sin paciente_rol (a diferencia de Login/index.html, este portal
-// solo tiene un tipo de sesión, no necesita distinguirlo por rol).
+// Guarda la sesión con prefijo paciente_ EN sessionStorage (no
+// localStorage) — exactamente las 6 claves pedidas, sin paciente_rol (a
+// diferencia de Login/index.html, este portal solo tiene un tipo de
+// sesión, no necesita distinguirlo por rol). sessionStorage es exclusivo
+// de cada pestaña: si dos pacientes de clínicas (o cuentas) distintas
+// inician sesión en pestañas distintas del mismo navegador, nunca se
+// pisan la sesión ni ven datos médicos ajenos — mismo fix aplicado a
+// Dashboard/index.html y DashboardMedico/index.html tras encontrar la
+// misma fuga entre clínicas tratándose de admins.
 function guardarSesion(p){
-  localStorage.setItem('paciente_clinica_id',p.clinica_id);
-  localStorage.setItem('paciente_id',p.id);
-  localStorage.setItem('paciente_nombre',p.nombre_completo);
-  localStorage.setItem('paciente_cedula',p.cedula||'');
-  localStorage.setItem('paciente_email',p.email||'');
-  localStorage.setItem('paciente_tipo','paciente');
+  sessionStorage.setItem('paciente_clinica_id',p.clinica_id);
+  sessionStorage.setItem('paciente_id',p.id);
+  sessionStorage.setItem('paciente_nombre',p.nombre_completo);
+  sessionStorage.setItem('paciente_cedula',p.cedula||'');
+  sessionStorage.setItem('paciente_email',p.email||'');
+  sessionStorage.setItem('paciente_tipo','paciente');
   CLINICA_ID=p.clinica_id;
 }
 
@@ -422,12 +428,12 @@ function render(){
   }
 }
 
-// Sesión guardada de una visita anterior (paciente_id + paciente_clinica_id
-// en localStorage) restaura el dashboard directo; si no hay sesión, se
+// Sesión guardada en esta misma pestaña (paciente_id + paciente_clinica_id
+// en sessionStorage) restaura el dashboard directo; si no hay sesión, se
 // muestra el login con la marca genérica (clinicaInfo aún no se resuelve
 // sin CLINICA_ID — ver login()).
 async function init(){
-  const id=localStorage.getItem('paciente_id');
+  const id=sessionStorage.getItem('paciente_id');
   if(id && CLINICA_ID){
     await cargarClinicaInfo();
     await cargar();

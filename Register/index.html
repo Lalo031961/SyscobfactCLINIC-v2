@@ -352,15 +352,17 @@ document.getElementById('regForm').addEventListener('submit', async (e) => {
       throw errUsuario;
     }
 
-    // 5. Sesión simple en localStorage, con prefijo admin_ (este registro
+    // 5. Sesión simple en sessionStorage, con prefijo admin_ (este registro
     // siempre crea la cuenta admin de la clínica) — mismo esquema con
-    // prefijo que usa Login/index.html, para que esta sesión y una de
-    // médico abierta en otra pestaña no se pisen entre sí.
-    localStorage.setItem('admin_clinica_id', clinica.id);
-    localStorage.setItem('admin_nombre', usuario.nombre);
-    localStorage.setItem('admin_email', usuario.email);
-    localStorage.setItem('admin_rol', usuario.rol);
-    localStorage.setItem('admin_tipo', 'admin');
+    // prefijo y mismo storage que usa Login/index.html: sessionStorage (no
+    // localStorage) evita que esta sesión se pise con la de un médico, o
+    // con la de un admin de OTRA clínica, abiertos en otra pestaña del
+    // mismo navegador.
+    sessionStorage.setItem('admin_clinica_id', clinica.id);
+    sessionStorage.setItem('admin_nombre', usuario.nombre);
+    sessionStorage.setItem('admin_email', usuario.email);
+    sessionStorage.setItem('admin_rol', usuario.rol);
+    sessionStorage.setItem('admin_tipo', 'admin');
 
     mostrarAlerta('✅ Cuenta creada. Redirigiendo...', 'success');
     setTimeout(() => { window.location.replace('../Dashboard/index.html'); }, 900);
