@@ -53,6 +53,24 @@ h1,h2{font-family:var(--font-display)}
 .field .field-error{font-size:.76rem;color:var(--error);margin-top:5px;display:none}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
+/* Selección de plan — 3 opciones, Básico preseleccionado por defecto. */
+.plan-select-label{font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:10px}
+.plan-card{
+  display:block;border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s,background .15s;
+}
+.plan-card:hover{border-color:var(--blue-mid)}
+.plan-card.selected{border-color:var(--blue);background:var(--blue-light)}
+.plan-card input[type=radio]{position:absolute;opacity:0;pointer-events:none}
+.plan-card-head{display:flex;align-items:center;gap:10px}
+.plan-card-icon{font-size:1.2rem;flex-shrink:0}
+.plan-card-title{display:flex;align-items:baseline;justify-content:space-between;flex:1;gap:8px}
+.plan-card-title b{font-size:.92rem;color:var(--text)}
+.plan-card-price{font-weight:700;color:var(--blue)}
+.plan-card-price small{font-weight:500;color:var(--text2);font-size:.7rem}
+.plan-card-features{list-style:none;margin:8px 0 0 32px;font-size:.78rem;color:var(--text2);line-height:1.6}
+.plan-card-features li::before{content:"✓ ";color:var(--success);font-weight:700}
+
 .checkbox-row{display:flex;align-items:flex-start;gap:10px;margin:20px 0}
 .checkbox-row input{margin-top:3px;width:16px;height:16px;accent-color:var(--blue);flex-shrink:0;cursor:pointer}
 .checkbox-row label{font-size:.83rem;color:var(--text2);line-height:1.5;cursor:pointer}
@@ -163,6 +181,47 @@ h1,h2{font-family:var(--font-display)}
         </div>
       </div>
 
+      <div class="field">
+        <p class="plan-select-label">Elige tu plan</p>
+        <div id="planSelect">
+          <label class="plan-card selected" data-plan="Basico">
+            <input type="radio" name="planElegido" value="Basico" checked>
+            <div class="plan-card-head">
+              <span class="plan-card-icon">⭐</span>
+              <div class="plan-card-title"><b>Básico</b><span class="plan-card-price">$75<small>/mes</small></span></div>
+            </div>
+            <ul class="plan-card-features">
+              <li>Hasta 5 médicos</li>
+              <li>Agenda y citas</li>
+              <li>Expedientes básicos</li>
+            </ul>
+          </label>
+          <label class="plan-card" data-plan="Profesional">
+            <input type="radio" name="planElegido" value="Profesional">
+            <div class="plan-card-head">
+              <span class="plan-card-icon">🚀</span>
+              <div class="plan-card-title"><b>Profesional</b><span class="plan-card-price">$125<small>/mes</small></span></div>
+            </div>
+            <ul class="plan-card-features">
+              <li>Hasta 10 médicos</li>
+              <li>Todo lo básico + reportes</li>
+            </ul>
+          </label>
+          <label class="plan-card" data-plan="Clinica">
+            <input type="radio" name="planElegido" value="Clinica">
+            <div class="plan-card-head">
+              <span class="plan-card-icon">🏥</span>
+              <div class="plan-card-title"><b>Clínica</b><span class="plan-card-price">$200<small>/mes</small></span></div>
+            </div>
+            <ul class="plan-card-features">
+              <li>Médicos ilimitados</li>
+              <li>Todo incluido</li>
+            </ul>
+          </label>
+        </div>
+        <p class="field-hint" style="font-size:.76rem;color:var(--text2);margin-top:2px">Tu primer mes es gratis sin importar el plan que elijas — después se cobra el monto mostrado.</p>
+      </div>
+
       <div class="checkbox-row">
         <input type="checkbox" id="fAceptoTerminos">
         <label for="fAceptoTerminos">
@@ -173,7 +232,7 @@ h1,h2{font-family:var(--font-display)}
       </div>
       <p class="field-error" id="err_fAceptoTerminos" style="margin-top:-10px;margin-bottom:14px"></p>
 
-      <button type="submit" class="btn-submit" id="btnSubmit">Registrarse</button>
+      <button type="submit" class="btn-submit" id="btnSubmit">Comenzar 1 mes gratis →</button>
     </form>
 
     <p class="foot-link">¿Interesado en una demostración? <a href="../Landing/index.html#contacto">Contáctanos</a></p>
@@ -189,7 +248,7 @@ h1,h2{font-family:var(--font-display)}
     <div class="modal-body">
       <p>Al registrarte en SyscobfactCLINIC aceptas lo siguiente:</p>
       <h4>1. Período de prueba</h4>
-      <p>Toda clínica nueva inicia con 1 mes de prueba gratuita en el plan Gratis, sin necesidad de tarjeta de crédito. Al vencer, tu cuenta se mantiene activa y puedes continuar con un plan de pago (Básico, Profesional o Clínica) según la cantidad de médicos de tu clínica.</p>
+      <p>Toda clínica nueva inicia con 30 días de prueba gratuita en el plan que elijas (Básico, Profesional o Clínica), sin necesidad de tarjeta de crédito. Al vencer, se cobra el monto mensual del plan elegido para continuar usando el sistema.</p>
       <h4>2. Datos de tu clínica</h4>
       <p>La información proporcionada (nombre, RUC, contacto) debe ser veraz. Eres responsable de mantenerla actualizada y de custodiar las credenciales de acceso de tu cuenta y de los usuarios que autorices.</p>
       <h4>3. Uso del servicio</h4>
@@ -216,6 +275,25 @@ const db = createClient(SURL, SKEY, {
 });
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Mismos 3 planes que Proyecto-Super-Admin/index.html (PLANES_CLINIC) y los
+// mismos valores reales de planes_clinica.nombre — si se agrega un plan acá
+// hay que agregarlo también allá para que el modal "Renovar Plan" coincida.
+const PLANES = {
+  Basico:      { nombre: 'Plan Básico',      monto: 75  },
+  Profesional: { nombre: 'Plan Profesional', monto: 125 },
+  Clinica:     { nombre: 'Plan Clínica',     monto: 200 },
+};
+
+// Resalta la tarjeta del plan elegido (radio real, oculto — el click en
+// cualquier parte de la tarjeta ya lo marca por ser un <label>, esto solo
+// mueve la clase .selected para el estilo).
+document.querySelectorAll('input[name="planElegido"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    document.querySelectorAll('.plan-card').forEach((card) => card.classList.remove('selected'));
+    radio.closest('.plan-card').classList.add('selected');
+  });
+});
 
 function abrirTerminos(e) {
   e.preventDefault();
@@ -307,7 +385,10 @@ document.getElementById('regForm').addEventListener('submit', async (e) => {
     // 2. Hash de la contraseña (SHA-256).
     const passwordHash = await sha256Hex(v.password);
 
-    // 3. Insertar la clínica — 30 días de prueba gratis desde hoy.
+    // 3. Insertar la clínica — 30 días de prueba gratis desde hoy, con el
+    // plan que el usuario eligió en el formulario (PLANES, definido arriba).
+    const planKey = document.querySelector('input[name="planElegido"]:checked')?.value || 'Basico';
+    const planElegido = { valor: planKey, ...PLANES[planKey] };
     const hoy = new Date();
     const vencimiento = new Date(hoy);
     vencimiento.setDate(vencimiento.getDate() + 30);
@@ -320,15 +401,17 @@ document.getElementById('regForm').addEventListener('submit', async (e) => {
         ruc: v.ruc,
         email: v.email,
         telefono: v.telefono,
-        // "Basico" (capitalizado, sin tilde) — no "basico" en minúscula:
-        // es el valor EXACTO de planes_clinica.nombre (confirmado contra la
-        // tabla real), la misma columna que actualizarEscogerPlan() usa más
-        // abajo en este Dashboard para buscar max_medicos del plan. Si acá
-        // quedara en minúscula, esa búsqueda no encontraría el plan y el
-        // límite de médicos dejaría de aplicarse a las clínicas nuevas.
-        plan: 'Basico',
-        plan_nombre: 'Plan Básico',
-        plan_monto_mensual: 75,
+        // Del plan que el usuario eligió en la sección "Elige tu plan" del
+        // formulario (planElegido) — "Basico"/"Profesional"/"Clinica"
+        // (capitalizados, sin tilde) son los valores EXACTOS de
+        // planes_clinica.nombre (confirmado contra la tabla real), la misma
+        // columna que actualizarEscogerPlan() usa en el Dashboard para
+        // buscar max_medicos del plan. Si quedara en otro formato esa
+        // búsqueda no encontraría el plan y el límite de médicos dejaría de
+        // aplicarse a las clínicas nuevas.
+        plan: planElegido.valor,
+        plan_nombre: planElegido.nombre,
+        plan_monto_mensual: planElegido.monto,
         estado: 'prueba',
         fecha_inicio: fISO(hoy),
         fecha_vencimiento: fISO(vencimiento),
