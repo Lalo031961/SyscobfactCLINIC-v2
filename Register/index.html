@@ -307,10 +307,10 @@ document.getElementById('regForm').addEventListener('submit', async (e) => {
     // 2. Hash de la contraseña (SHA-256).
     const passwordHash = await sha256Hex(v.password);
 
-    // 3. Insertar la clínica — 1 mes de prueba gratis desde hoy.
+    // 3. Insertar la clínica — 30 días de prueba gratis desde hoy.
     const hoy = new Date();
     const vencimiento = new Date(hoy);
-    vencimiento.setMonth(vencimiento.getMonth() + 1);
+    vencimiento.setDate(vencimiento.getDate() + 30);
     const fISO = (d) => d.toISOString().slice(0, 10);
 
     const { data: clinica, error: errClinica } = await db
@@ -320,8 +320,16 @@ document.getElementById('regForm').addEventListener('submit', async (e) => {
         ruc: v.ruc,
         email: v.email,
         telefono: v.telefono,
-        plan: 'Gratis',
-        estado: 'activo',
+        // "Basico" (capitalizado, sin tilde) — no "basico" en minúscula:
+        // es el valor EXACTO de planes_clinica.nombre (confirmado contra la
+        // tabla real), la misma columna que actualizarEscogerPlan() usa más
+        // abajo en este Dashboard para buscar max_medicos del plan. Si acá
+        // quedara en minúscula, esa búsqueda no encontraría el plan y el
+        // límite de médicos dejaría de aplicarse a las clínicas nuevas.
+        plan: 'Basico',
+        plan_nombre: 'Plan Básico',
+        plan_monto_mensual: 75,
+        estado: 'prueba',
         fecha_inicio: fISO(hoy),
         fecha_vencimiento: fISO(vencimiento),
         acepto_terminos: true,

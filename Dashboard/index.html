@@ -826,7 +826,7 @@ async function cargarDatos() {
       db.from('pagos').select('*').eq('clinica_id', CLINICA_ID).order('created_at', { ascending: false }),
       db.from('colaboradores').select('*').eq('clinica_id', CLINICA_ID).eq('estado', 'activo'),
       db.from('incapacidades').select('*').eq('clinica_id', CLINICA_ID).order('created_at', { ascending: false }),
-      db.from('clinicas').select('nombre,plan,estado,fecha_vencimiento').eq('id', CLINICA_ID).single(),
+      db.from('clinicas').select('nombre,plan,plan_nombre,plan_monto_mensual,estado,fecha_vencimiento').eq('id', CLINICA_ID).single(),
     ]);
 
     medicos          = med   || [];
@@ -1237,10 +1237,13 @@ function actualizarEscogerPlan() {
 
   const dias = diasParaVencerClinica();
   const porVencer   = dias !== null && dias < 7;
-  const esGratis     = clinicaActual.plan === 'Gratis';
+  // plan === 'Gratis': clínicas viejas (registradas antes de este cambio).
+  // estado === 'prueba': clínicas nuevas (ver Register/index.html — ahora
+  // arrancan en plan "Basico" + estado "prueba", no en plan "Gratis").
+  const enPrueba = clinicaActual.plan === 'Gratis' || (clinicaActual.estado || '').toLowerCase() === 'prueba';
   const limiteMedicos = maxMedicosPlan != null && medicos.length >= maxMedicosPlan;
 
-  slot.innerHTML = (porVencer || esGratis || limiteMedicos)
+  slot.innerHTML = (porVencer || enPrueba || limiteMedicos)
     ? `<a class="btn-escoger-plan" href="../Landing/index.html#planes" target="_blank" rel="noopener noreferrer">
          <i class="fas fa-credit-card"></i> Escoger Plan
        </a>`
@@ -1624,29 +1627,71 @@ function irPaginaHist(p) {
 }
 
 // ════ OVERVIEW ══════════════════════════════════════════════
-// Semáforo de días para el vencimiento de la clínica (clinicas.fecha_vencimiento):
-// verde >15 días, amarillo 7-15, naranja 3-7, rojo <3. Aplica igual para
-// plan Gratis (fin del mes de prueba) que para planes de pago (fin del
-// ciclo mensual) — clinicas.fecha_vencimiento cubre ambos casos en v2.
+// Banner de vencimiento — 3 estados, mismo criterio que SyscobfactMED
+// (Proyecto-MED-V2/Dashboard/index.html → renderBannerVencimiento()):
+// 🔵 en período de prueba (clinicas.estado = 'prueba') / ⚠️ por vencer
+// (< 7 días) / 🔴 vencido — reemplaza el semáforo de 4 niveles anterior
+// (verde/amarillo/naranja/rojo) por decisión explícita del usuario.
+// Este archivo ya armaba estos banners con estilos inline (no clases CSS
+// reusables) — se mantiene ese mismo criterio acá para no mezclar estilos.
+function bloquePagoHtmlClinica() {
+  const monto = clinicaActual?.plan_monto_mensual != null ? Number(clinicaActual.plan_monto_mensual).toFixed(0) : '—';
+  return `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(0,0,0,.15);text-align:left;font-size:.8rem;color:#475569">
+      <b style="display:block;margin-bottom:6px;color:#152238">Para renovar su plan realice su pago:</b>
+      <div style="display:flex;gap:8px;margin-top:6px;line-height:1.5">
+        <span style="flex-shrink:0">💛</span>
+        <div>Yappy: <b>6942-5102</b><br>Monto: <b>$${monto}/mes</b><br>Concepto: SyscobfactCLINIC ${clinicaActual?.nombre || ''}</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:6px;line-height:1.5">
+        <span style="flex-shrink:0">📸</span>
+        <div>Envíe captura del pago<br>por WhatsApp al: <b>6745-4838</b></div>
+      </div>
+    </div>`;
+}
+
 function renderSemaforoVencimiento() {
-  if (!clinicaActual?.fecha_vencimiento) return '';
+  if (!clinicaActual) return '';
+
+  if ((clinicaActual.estado || '').toLowerCase() === 'prueba') {
+    return `<div style="display:flex;gap:12px;border:2px solid #1A56A0;background:#EAF1FB;border-radius:14px;padding:14px 18px;margin-bottom:20px;font-size:.82rem">
+      <span style="font-size:1.3rem;flex-shrink:0">🔵</span>
+      <div style="text-align:left">
+        <b style="display:block;color:#1A56A0;font-size:.85rem">Estás en tu periodo de prueba</b>
+        <span style="color:#64748b">Explora la plataforma sin costo.</span>
+      </div>
+    </div>`;
+  }
+
+  if (!clinicaActual.fecha_vencimiento) return '';
+
   const dias = diasParaVencerClinica();
   const fechaLegible = new Date(`${clinicaActual.fecha_vencimiento}T00:00:00`)
     .toLocaleDateString('es-PA', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  const { bg, borde, icono, mensaje } =
-    dias > 15
-      ? { bg: '#EAF1FB', borde: '#1A56A0', icono: '✅', mensaje: `Plan ${clinicaActual.plan} activo` }
-      : dias > 7
-        ? { bg: '#fffbeb', borde: '#d97706', icono: '⚠️', mensaje: `Tu plan vence en ${dias} días` }
-        : dias > 3
-          ? { bg: '#fff7ed', borde: '#c2410c', icono: '🔶', mensaje: `Vence pronto — ${dias} días restantes` }
-          : { bg: '#fff5f5', borde: '#e11d48', icono: '🚨', mensaje: `Vence en ${dias} día${dias===1?'':'s'} — renueva ahora` };
+  if (dias < 0) {
+    return `<div style="display:flex;gap:12px;border:2px solid #e11d48;background:#fff5f5;border-radius:14px;padding:14px 18px;margin-bottom:20px;font-size:.82rem">
+      <span style="font-size:1.3rem;flex-shrink:0">🔴</span>
+      <div style="text-align:left">
+        <b style="display:block;color:#e11d48;font-size:.85rem">Su plan ha vencido</b>
+        <span style="color:#64748b">Contacte al administrador.</span>
+        ${bloquePagoHtmlClinica()}
+      </div>
+    </div>`;
+  }
 
-  return `<div style="border:2px solid ${borde};background:${bg};border-radius:14px;padding:10px 18px;margin-bottom:20px;text-align:center;font-size:.82rem">
-    <span style="font-weight:700;color:${borde}">${icono} ${mensaje}</span>
-    <span style="color:#64748b"> &nbsp;|&nbsp; Vencimiento: ${fechaLegible}</span>
-  </div>`;
+  if (dias < 7) {
+    return `<div style="display:flex;gap:12px;border:2px solid #d97706;background:#fffbeb;border-radius:14px;padding:14px 18px;margin-bottom:20px;font-size:.82rem">
+      <span style="font-size:1.3rem;flex-shrink:0">⚠️</span>
+      <div style="text-align:left">
+        <b style="display:block;color:#d97706;font-size:.85rem">Vence pronto — ${dias} día${dias === 1 ? '' : 's'} restantes</b>
+        <span style="color:#64748b">Vencimiento: ${fechaLegible}</span>
+        ${bloquePagoHtmlClinica()}
+      </div>
+    </div>`;
+  }
+
+  return '';
 }
 
 function renderOverview(){
